@@ -1,0 +1,145 @@
+<?php use App\Core\Helper; ?>
+
+<!-- Breadcrumb -->
+<section class="page-hero page-hero-sm">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Trilha de navegação">
+            <a href="<?= APP_URL ?>/">Início</a>
+            <span>›</span>
+            <a href="<?= APP_URL ?>/produtos">Produtos</a>
+            <span>›</span>
+            <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>"><?= htmlspecialchars($produto['categoria_nome'], ENT_QUOTES, 'UTF-8') ?></a>
+            <span>›</span>
+            <span><?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?></span>
+        </nav>
+    </div>
+</section>
+
+<!-- Produto Detail -->
+<section class="section-produto-detalhe">
+    <div class="container produto-detalhe-grid">
+
+        <!-- Galeria -->
+        <div class="produto-galeria">
+            <?php if (!empty($imagens)): ?>
+            <div class="galeria-main" id="galeria-main">
+                <img src="<?= Helper::upload($imagens[0]['caminho']) ?>"
+                     alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
+                     id="galeria-img-principal">
+            </div>
+            <?php if (count($imagens) > 1): ?>
+            <div class="galeria-thumbs">
+                <?php foreach ($imagens as $i => $img): ?>
+                <button class="galeria-thumb <?= $i === 0 ? 'active' : '' ?>"
+                        data-src="<?= Helper::upload($img['caminho']) ?>"
+                        onclick="trocarImagem(this)">
+                    <img src="<?= Helper::upload($img['caminho']) ?>"
+                         alt="Imagem <?= $i + 1 ?> de <?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
+                         loading="lazy">
+                </button>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <?php else: ?>
+            <div class="galeria-placeholder">🌿</div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Informações -->
+        <div class="produto-info">
+            <span class="produto-categoria-tag">
+                <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>"><?= htmlspecialchars($produto['categoria_nome'], ENT_QUOTES, 'UTF-8') ?></a>
+            </span>
+            <h1 class="produto-titulo"><?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?></h1>
+
+            <?php if ($produto['descricao_curta']): ?>
+            <p class="produto-resumo"><?= htmlspecialchars($produto['descricao_curta'], ENT_QUOTES, 'UTF-8') ?></p>
+            <?php endif; ?>
+
+            <div class="produto-preco-grande"><?= Helper::money((float)$produto['preco_venda']) ?></div>
+
+            <div class="produto-cta-buttons">
+                <a href="<?= Helper::whatsappProduct($produto['nome']) ?>"
+                   target="_blank" rel="noopener"
+                   class="btn btn-primary btn-lg">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" style="margin-right:8px;vertical-align:middle"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Comprar pelo WhatsApp
+                </a>
+            </div>
+
+            <!-- Abas de informação -->
+            <div class="produto-tabs">
+                <div class="tabs-header">
+                    <?php if ($produto['descricao_completa']): ?>
+                    <button class="tab-btn active" data-tab="descricao">Descrição</button>
+                    <?php endif; ?>
+                    <?php if ($produto['composicao']): ?>
+                    <button class="tab-btn" data-tab="composicao">Composição</button>
+                    <?php endif; ?>
+                    <?php if ($produto['modo_uso']): ?>
+                    <button class="tab-btn" data-tab="modo-uso">Modo de Uso</button>
+                    <?php endif; ?>
+                    <?php if ($produto['cuidados']): ?>
+                    <button class="tab-btn" data-tab="cuidados">Cuidados</button>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($produto['descricao_completa']): ?>
+                <div class="tab-content active" id="tab-descricao">
+                    <p><?= nl2br(htmlspecialchars($produto['descricao_completa'], ENT_QUOTES, 'UTF-8')) ?></p>
+                </div>
+                <?php endif; ?>
+                <?php if ($produto['composicao']): ?>
+                <div class="tab-content" id="tab-composicao">
+                    <p><?= nl2br(htmlspecialchars($produto['composicao'], ENT_QUOTES, 'UTF-8')) ?></p>
+                </div>
+                <?php endif; ?>
+                <?php if ($produto['modo_uso']): ?>
+                <div class="tab-content" id="tab-modo-uso">
+                    <p><?= nl2br(htmlspecialchars($produto['modo_uso'], ENT_QUOTES, 'UTF-8')) ?></p>
+                </div>
+                <?php endif; ?>
+                <?php if ($produto['cuidados']): ?>
+                <div class="tab-content" id="tab-cuidados">
+                    <p><?= nl2br(htmlspecialchars($produto['cuidados'], ENT_QUOTES, 'UTF-8')) ?></p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Produtos relacionados -->
+<?php if (!empty($relacionados)): ?>
+<section class="section-relacionados">
+    <div class="container">
+        <h2 class="section-title-sm">Você também pode gostar</h2>
+        <div class="produtos-grid produtos-grid-sm">
+            <?php foreach ($relacionados as $rel): ?>
+            <div class="produto-card">
+                <a href="<?= APP_URL ?>/produtos/<?= $rel['categoria_slug'] ?? $produto['categoria_slug'] ?>/<?= $rel['slug'] ?>" class="produto-card-img-wrap">
+                    <?php if (!empty($rel['imagem_principal'])): ?>
+                    <img src="<?= Helper::upload($rel['imagem_principal']) ?>"
+                         alt="<?= htmlspecialchars($rel['nome'], ENT_QUOTES, 'UTF-8') ?>"
+                         loading="lazy">
+                    <?php else: ?>
+                    <div class="produto-img-placeholder">🌿</div>
+                    <?php endif; ?>
+                </a>
+                <div class="produto-card-body">
+                    <h3 class="produto-nome">
+                        <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>/<?= $rel['slug'] ?>">
+                            <?= htmlspecialchars($rel['nome'], ENT_QUOTES, 'UTF-8') ?>
+                        </a>
+                    </h3>
+                    <div class="produto-card-footer">
+                        <span class="produto-preco"><?= Helper::money((float)$rel['preco_venda']) ?></span>
+                        <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>/<?= $rel['slug'] ?>" class="btn btn-outline btn-sm">Ver</a>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
