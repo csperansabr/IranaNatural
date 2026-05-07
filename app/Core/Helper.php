@@ -149,4 +149,43 @@ class Helper
             default => $unit,
         };
     }
+
+    // Render basic Markdown to safe HTML (admin-authored content only)
+    public static function md(string $text): string
+    {
+        if ($text === '') return '';
+        // Escape HTML first to prevent XSS, then apply Markdown patterns
+        $t = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        // Bold
+        $t = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $t);
+        $t = preg_replace('/__(.+?)__/s', '<strong>$1</strong>', $t);
+        // Italic (after bold to avoid conflict)
+        $t = preg_replace('/\*([^\*\n]+?)\*/', '<em>$1</em>', $t);
+        $t = preg_replace('/_([^_\n]+?)_/', '<em>$1</em>', $t);
+        // Inline links [text](url)
+        $t = preg_replace('/\[([^\]]+)\]\(([^\)]+)\)/', '<a href="$2" target="_blank" rel="noopener">$1</a>', $t);
+        // Unordered lists (consecutive - or * lines)
+        $t = preg_replace_callback('/(?:^[-\*] .+(?:\n|$))+/m', function ($m) {
+            $items = preg_split('/\n/', trim($m[0]));
+            $html  = '<ul>';
+            foreach ($items as $item) {
+                $item = preg_replace('/^[-\*] /', '', $item);
+                if ($item !== '') $html .= '<li>' . $item . '</li>';
+            }
+            return $html . '</ul>';
+        }, $t);
+        // Split into paragraphs by double newlines
+        $parts  = preg_split('/\n{2,}/', $t);
+        $result = '';
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') continue;
+            if (str_starts_with($part, '<ul>') || str_starts_with($part, '<ol>')) {
+                $result .= $part;
+            } else {
+                $result .= '<p>' . str_replace("\n", '<br>', $part) . '</p>';
+            }
+        }
+        return $result;
+    }
 }

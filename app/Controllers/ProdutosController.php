@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Helper;
 use App\Models\Produto;
 use App\Models\Categoria;
 
@@ -55,11 +56,32 @@ class ProdutosController extends Controller
         $imagens    = $this->produto->getImagens((int)$produto['id']);
         $relacionados = $this->produto->relacionados((int)$produto['id'], (int)$produto['categoria_id']);
 
+        $imagemUrl = !empty($imagens) ? Helper::upload($imagens[0]['caminho']) : APP_URL . '/assets/images/og-default.jpg';
+
         $meta = [
-            'title'       => $produto['nome'] . ' — ' . APP_NAME,
-            'description' => $produto['descricao_curta'] ?: APP_SLOGAN,
+            'title'       => ($produto['seo_titulo'] ?: $produto['nome']) . ' — ' . APP_NAME,
+            'description' => $produto['seo_descricao'] ?: ($produto['descricao_curta'] ?: APP_SLOGAN),
             'url'         => APP_URL . '/produtos/' . $catSlug . '/' . $slug,
-            'image'       => !empty($imagens) ? \App\Core\Helper::upload($imagens[0]['caminho']) : '',
+            'image'       => $imagemUrl,
+            'og_type'     => 'product',
+            'schema'      => json_encode([
+                '@context'    => 'https://schema.org',
+                '@type'       => 'Product',
+                'name'        => $produto['nome'],
+                'description' => strip_tags($produto['descricao_curta'] ?: ''),
+                'image'       => $imagemUrl,
+                'url'         => APP_URL . '/produtos/' . $catSlug . '/' . $slug,
+                'brand'       => ['@type' => 'Brand', 'name' => APP_NAME],
+                'offers'      => [
+                    '@type'         => 'Offer',
+                    'price'         => number_format((float)$produto['preco_venda'], 2, '.', ''),
+                    'priceCurrency' => 'BRL',
+                    'availability'  => (int)$produto['estoque_atual'] > 0
+                                        ? 'https://schema.org/InStock'
+                                        : 'https://schema.org/OutOfStock',
+                    'seller'        => ['@type' => 'Organization', 'name' => APP_NAME],
+                ],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
         $this->render('produtos/show', compact('produto', 'imagens', 'relacionados', 'meta'));

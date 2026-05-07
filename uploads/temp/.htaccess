@@ -1,0 +1,3 @@
+# Deny direct access to temporary import files
+Order Allow,Deny
+Deny from all

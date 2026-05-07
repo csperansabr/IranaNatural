@@ -56,6 +56,20 @@
             <p class="produto-resumo"><?= htmlspecialchars($produto['descricao_curta'], ENT_QUOTES, 'UTF-8') ?></p>
             <?php endif; ?>
 
+            <?php
+            // Tags
+            $tagsList = array_filter(array_map('trim', explode(',', $produto['tags'] ?? '')));
+            if (!empty($tagsList)):
+            ?>
+            <div class="produto-tags" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem">
+                <?php foreach ($tagsList as $tag): ?>
+                <span style="display:inline-block;background:#EBF8EE;color:#276749;border:1px solid #C6F6D5;border-radius:999px;padding:2px 12px;font-size:0.8rem">
+                    <?= htmlspecialchars($tag, ENT_QUOTES, 'UTF-8') ?>
+                </span>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <div class="produto-preco-grande"><?= Helper::money((float)$produto['preco_venda']) ?></div>
 
             <div class="produto-cta-buttons">
@@ -68,13 +82,17 @@
             </div>
 
             <!-- Abas de informação -->
+            <?php
+            $hasTabs = $produto['descricao_completa'] || $produto['composicao'] || $produto['modo_uso'] || $produto['cuidados'];
+            ?>
+            <?php if ($hasTabs): ?>
             <div class="produto-tabs">
                 <div class="tabs-header">
                     <?php if ($produto['descricao_completa']): ?>
                     <button class="tab-btn active" data-tab="descricao">Descrição</button>
                     <?php endif; ?>
                     <?php if ($produto['composicao']): ?>
-                    <button class="tab-btn" data-tab="composicao">Composição</button>
+                    <button class="tab-btn <?= !$produto['descricao_completa'] ? 'active' : '' ?>" data-tab="composicao">Composição</button>
                     <?php endif; ?>
                     <?php if ($produto['modo_uso']): ?>
                     <button class="tab-btn" data-tab="modo-uso">Modo de Uso</button>
@@ -86,11 +104,11 @@
 
                 <?php if ($produto['descricao_completa']): ?>
                 <div class="tab-content active" id="tab-descricao">
-                    <p><?= nl2br(htmlspecialchars($produto['descricao_completa'], ENT_QUOTES, 'UTF-8')) ?></p>
+                    <div class="produto-rich-text"><?= Helper::md($produto['descricao_completa']) ?></div>
                 </div>
                 <?php endif; ?>
                 <?php if ($produto['composicao']): ?>
-                <div class="tab-content" id="tab-composicao">
+                <div class="tab-content <?= !$produto['descricao_completa'] ? 'active' : '' ?>" id="tab-composicao">
                     <p><?= nl2br(htmlspecialchars($produto['composicao'], ENT_QUOTES, 'UTF-8')) ?></p>
                 </div>
                 <?php endif; ?>
@@ -105,6 +123,7 @@
                 </div>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
     </div>
 </section>
@@ -117,7 +136,7 @@
         <div class="produtos-grid produtos-grid-sm">
             <?php foreach ($relacionados as $rel): ?>
             <div class="produto-card">
-                <a href="<?= APP_URL ?>/produtos/<?= $rel['categoria_slug'] ?? $produto['categoria_slug'] ?>/<?= $rel['slug'] ?>" class="produto-card-img-wrap">
+                <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>/<?= $rel['slug'] ?>" class="produto-card-img-wrap">
                     <?php if (!empty($rel['imagem_principal'])): ?>
                     <img src="<?= Helper::upload($rel['imagem_principal']) ?>"
                          alt="<?= htmlspecialchars($rel['nome'], ENT_QUOTES, 'UTF-8') ?>"

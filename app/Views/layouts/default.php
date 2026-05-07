@@ -9,13 +9,18 @@
     <link rel="canonical" href="<?= htmlspecialchars($meta['url'] ?? APP_URL, ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- Open Graph -->
-    <meta property="og:type"        content="website">
+    <meta property="og:type"        content="<?= htmlspecialchars($meta['og_type'] ?? 'website', ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:title"       content="<?= htmlspecialchars($meta['title'] ?? APP_NAME, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:description" content="<?= htmlspecialchars($meta['description'] ?? APP_SLOGAN, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:url"         content="<?= htmlspecialchars($meta['url'] ?? APP_URL, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:image"       content="<?= htmlspecialchars($meta['image'] ?? APP_URL . '/assets/images/og-default.jpg', ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:site_name"   content="<?= APP_NAME ?>">
     <meta property="og:locale"      content="pt_BR">
+
+    <?php if (!empty($meta['schema'])): ?>
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json"><?= $meta['schema'] ?></script>
+    <?php endif; ?>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

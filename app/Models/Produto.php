@@ -8,10 +8,13 @@ class Produto extends Model
 {
     protected string $table = 'produtos';
 
+    // Public site: only published products
     public function allAtivos(int $categoriaId = 0): array
     {
         $sql    = "SELECT p.*, c.nome as categoria_nome, c.slug as categoria_slug,
-                          (SELECT caminho FROM imagens_produtos WHERE produto_id = p.id AND principal = 1 LIMIT 1) as imagem_principal
+                          (SELECT caminho FROM imagens_produtos WHERE produto_id = p.id AND principal = 1 LIMIT 1) as imagem_principal,
+                          (SELECT GROUP_CONCAT(caminho ORDER BY principal DESC, ordem ASC SEPARATOR '|')
+                           FROM imagens_produtos WHERE produto_id = p.id) as todas_imagens
                    FROM produtos p
                    JOIN categorias c ON c.id = p.categoria_id
                    WHERE p.ativo = 1";
@@ -22,6 +25,18 @@ class Produto extends Model
         }
         $sql .= " ORDER BY p.nome ASC";
         return $this->query($sql, $params);
+    }
+
+    // Admin panel: all products regardless of active status
+    public function allForAdmin(): array
+    {
+        return $this->query(
+            "SELECT p.*, c.nome as categoria_nome, c.slug as categoria_slug,
+                    (SELECT caminho FROM imagens_produtos WHERE produto_id = p.id AND principal = 1 LIMIT 1) as imagem_principal
+             FROM produtos p
+             JOIN categorias c ON c.id = p.categoria_id
+             ORDER BY p.ativo DESC, p.nome ASC"
+        );
     }
 
     public function findBySlug(string $slug): ?array
@@ -119,9 +134,14 @@ class Produto extends Model
         if ($principal) {
             $this->exec("UPDATE imagens_produtos SET principal = 0 WHERE produto_id = ?", [$produtoId]);
         }
+        $maxOrdem = $this->queryOne(
+            "SELECT COALESCE(MAX(ordem), -1) as m FROM imagens_produtos WHERE produto_id = ?",
+            [$produtoId]
+        );
+        $ordem = ((int)($maxOrdem['m'] ?? -1)) + 1;
         $this->exec(
-            "INSERT INTO imagens_produtos (produto_id, caminho, principal) VALUES (?, ?, ?)",
-            [$produtoId, $caminho, $principal ? 1 : 0]
+            "INSERT INTO imagens_produtos (produto_id, caminho, principal, ordem) VALUES (?, ?, ?, ?)",
+            [$produtoId, $caminho, $principal ? 1 : 0, $ordem]
         );
     }
 
@@ -132,6 +152,33 @@ class Produto extends Model
             $this->exec("DELETE FROM imagens_produtos WHERE id = ?", [$imagemId]);
         }
         return $img['caminho'] ?? null;
+    }
+
+    public function setPrincipalImagem(int $produtoId, int $imagemId): void
+    {
+        $this->exec("UPDATE imagens_produtos SET principal = 0 WHERE produto_id = ?", [$produtoId]);
+        $this->exec("UPDATE imagens_produtos SET principal = 1 WHERE id = ? AND produto_id = ?", [$imagemId, $produtoId]);
+    }
+
+    public function moverImagem(int $produtoId, int $imagemId, string $direction): void
+    {
+        $imgs = $this->getImagens($produtoId);
+        // Normalise ordem values to 0,1,2,... ignoring gaps
+        foreach ($imgs as $i => $img) {
+            $this->exec("UPDATE imagens_produtos SET ordem = ? WHERE id = ?", [$i, $img['id']]);
+            $imgs[$i]['ordem'] = $i;
+        }
+        // Find current index
+        $currentIdx = null;
+        foreach ($imgs as $i => $img) {
+            if ((int)$img['id'] === $imagemId) { $currentIdx = $i; break; }
+        }
+        if ($currentIdx === null) return;
+        $swapIdx = $direction === 'up' ? $currentIdx - 1 : $currentIdx + 1;
+        if ($swapIdx < 0 || $swapIdx >= count($imgs)) return;
+        // Swap ordem
+        $this->exec("UPDATE imagens_produtos SET ordem = ? WHERE id = ?", [$swapIdx, $imgs[$currentIdx]['id']]);
+        $this->exec("UPDATE imagens_produtos SET ordem = ? WHERE id = ?", [$currentIdx, $imgs[$swapIdx]['id']]);
     }
 
     public function withAlertaEstoque(): array

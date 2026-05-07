@@ -435,6 +435,69 @@ section { padding: 5rem 0; }
     border-bottom-color: var(--verde-oliva);
 }
 
+/* ── Card gallery wrapper (listagem de produtos) ── */
+.card-gallery {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+    background: var(--bege-claro);
+}
+.card-gallery .produto-card-img-wrap {
+    height: 100%;
+}
+
+/* Botões de navegação prev/next */
+.card-gallery-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.42);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    pointer-events: auto;
+}
+.card-gallery-btn.prev { left: 8px; }
+.card-gallery-btn.next { right: 8px; }
+.card-gallery:hover .card-gallery-btn { opacity: 1; }
+.card-gallery-btn:hover { background: rgba(44, 95, 46, 0.82); }
+
+/* Dots indicadores */
+.card-gallery-dots {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+}
+.card-gallery-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.55);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.card-gallery-dot.active {
+    background: #fff;
+    transform: scale(1.4);
+}
+
 .produto-card-img-wrap {
     display: block;
     height: 220px;
@@ -445,7 +508,7 @@ section { padding: 5rem 0; }
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    transition: transform 0.5s ease, opacity 0.15s ease;
 }
 .produto-card:hover .produto-card-img-wrap img { transform: scale(1.04); }
 .produto-img-placeholder {
@@ -986,6 +1049,7 @@ section { padding: 5rem 0; }
     .banner-title  { font-size: 1.8rem; }
     .produtos-grid { grid-template-columns: 1fr 1fr; gap: 1rem; }
     .produto-card-img-wrap { height: 160px; }
+    .card-gallery { height: 160px; }
     .whatsapp-float { bottom: 1.25rem; right: 1.25rem; width: 50px; height: 50px; }
     .tabs-header { flex-wrap: nowrap; overflow-x: auto; }
     .tab-btn { flex-shrink: 0; }

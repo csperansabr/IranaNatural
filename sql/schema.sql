@@ -85,11 +85,15 @@ CREATE TABLE IF NOT EXISTS produtos (
     categoria_id      INT UNSIGNED    NOT NULL,
     nome              VARCHAR(150)    NOT NULL,
     slug              VARCHAR(160)    NOT NULL UNIQUE,
+    sku               VARCHAR(100)    NULL UNIQUE,
     descricao_curta   TEXT,
     descricao_completa TEXT,
     composicao        TEXT,
     modo_uso          TEXT,
     cuidados          TEXT,
+    seo_titulo        VARCHAR(70),
+    seo_descricao     VARCHAR(160),
+    tags              TEXT,
     preco_venda       DECIMAL(10,2)   NOT NULL DEFAULT 0,
     margem_desejada   DECIMAL(5,2)    NOT NULL DEFAULT 0,  -- %
     custo_calculado   DECIMAL(12,4)   NOT NULL DEFAULT 0,
@@ -237,6 +241,36 @@ CREATE TABLE IF NOT EXISTS depoimentos (
     ativo      TINYINT(1)      NOT NULL DEFAULT 1,
     ordem      SMALLINT        NOT NULL DEFAULT 0,
     criado_em  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Histórico de importações (v1.2)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS import_history (
+    id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    entidade     ENUM('produtos','insumos','estoque') NOT NULL,
+    modo         ENUM('criar','atualizar','criar_atualizar') NOT NULL DEFAULT 'criar_atualizar',
+    arquivo_nome VARCHAR(255),
+    total_linhas INT NOT NULL DEFAULT 0,
+    inseridos    INT NOT NULL DEFAULT 0,
+    atualizados  INT NOT NULL DEFAULT 0,
+    erros        INT NOT NULL DEFAULT 0,
+    ignorados    INT NOT NULL DEFAULT 0,
+    usuario_id   INT UNSIGNED NULL,
+    criado_em    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Erros detalhados por importação (v1.2)
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS import_errors (
+    id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    import_id INT UNSIGNED NOT NULL,
+    linha     INT NOT NULL,
+    campo     VARCHAR(100),
+    valor     TEXT,
+    mensagem  TEXT NOT NULL,
+    FOREIGN KEY (import_id) REFERENCES import_history(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

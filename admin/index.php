@@ -61,6 +61,7 @@ $map = [
     'estoque'     => 'Admin\\Controllers\\EstoqueController',
     'banners'     => 'Admin\\Controllers\\BannersController',
     'depoimentos' => 'Admin\\Controllers\\DepoimentosController',
+    'importacao'  => 'Admin\\Controllers\\ImportacaoController',
 ];
 
 $class = $map[$module] ?? null;
@@ -74,6 +75,19 @@ $ctrl = new $class();
 if ($module === 'login') {
     $ctrl->login(); exit;
 }
+
+// ── Módulo de Importação (routing personalizado) ──────────────────
+if ($module === 'importacao') {
+    if ($seg1 === null || $seg1 === '') { $ctrl->index(); exit; }
+    if ($seg1 === 'historico') { $ctrl->historico(); exit; }
+    $entidade = in_array($seg1, ['produtos', 'insumos', 'estoque'], true) ? $seg1 : null;
+    if ($entidade === null) { http_response_code(404); echo '<h2>Não encontrado.</h2>'; exit; }
+    if ($seg2 === 'preview'   && $method === 'POST') { $ctrl->preview($entidade); exit; }
+    if ($seg2 === 'processar' && $method === 'POST') { $ctrl->processar($entidade); exit; }
+    if ($seg2 === 'modelo')                          { $ctrl->modelo($entidade); exit; }
+    $ctrl->form($entidade); exit;
+}
+// ─────────────────────────────────────────────────────────────────
 
 // /admin/ ou /admin/dashboard
 if ($seg1 === null || $seg1 === '') {
@@ -117,6 +131,18 @@ if (is_numeric($seg1)) {
         case 'ficha-excluir':
             if ($method === 'POST') $ctrl->excluirFichaItem($id, (int)($seg3 ?? 0));
             else header('Location: /admin/' . $module . "/{$id}/ficha");
+            break;
+        case 'imagem-principal':
+            if ($method === 'POST') $ctrl->setPrincipalImagem($id, (int)($seg3 ?? 0));
+            else header('Location: /admin/' . $module . "/{$id}/editar");
+            break;
+        case 'imagem-excluir':
+            if ($method === 'POST') $ctrl->excluirImagemProduto($id, (int)($seg3 ?? 0));
+            else header('Location: /admin/' . $module . "/{$id}/editar");
+            break;
+        case 'imagem-mover':
+            if ($method === 'POST') $ctrl->moverImagem($id, (int)($seg3 ?? 0));
+            else header('Location: /admin/' . $module . "/{$id}/editar");
             break;
         default:
             $ctrl->index(); break;
