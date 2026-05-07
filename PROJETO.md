@@ -1,518 +1,452 @@
-# Iraná Natural — Documentação do Projeto
-
-> Versão: 1.2.0 | Data: 2026-05 | Hospedagem: HostGator (PHP 8+, MySQL)
+# Iraná Natural — Registro de Implementações
 
 ---
 
-## 1. Visão Geral
+## [2026-05-07] Melhorias Prioritárias (Segurança, UX, SEO)
 
-Sistema web completo para a marca **Iraná Natural**, unindo:
-- Site institucional + catálogo de produtos
-- Gestão de insumos (matérias-primas) com custo médio ponderado
-- Gestão de produtos com ficha técnica e cálculo automático de custo
-- Controle de produção (debite de insumos + entrada de produtos)
-- Controle de vendas (pedidos com múltiplos itens)
-- Controle de estoque (insumos e produtos acabados)
-- Painel administrativo completo
+### 1. CSRF Protection no formulário de contato
 
-**Domínio:** irananatural.com.br  
-**WhatsApp:** (51) 99229-6036  
-**E-mail contato:** contato@irananatural.com.br  
-**Admin inicial:** admin@irananatural.com.br | senha: Iran@2024  
+**Arquivos modificados:**
+- `app/Controllers/ContatoController.php` — `index()` passa `$csrf = Session::csrfToken()` para a view; `enviar()` verifica `Session::verifyCsrf($_POST['_csrf'])` antes de qualquer processamento
+- `app/Views/contato/index.php` — campo `<input type="hidden" name="_csrf" value="...">` adicionado logo após `<form>`
+
+**Implementação:** usa `Session::csrfToken()` (já existia na classe) — token por sessão, gerado com `bin2hex(random_bytes(32))`. Rejeição redireciona para `/contato` com flash de erro.
 
 ---
 
-## 2. Estrutura de Diretórios
+### 2. robots.txt
 
-```
-/                           ← Raiz do domínio (public_html/)
-├── .htaccess               ← Rewrite rules (roteamento público)
-├── index.php               ← Front controller público
-├── PROJETO.md              ← Esta documentação
-│
-├── config/
-│   ├── database.php        ← Credenciais do banco (NUNCA versionar com dados reais)
-│   └── app.php             ← Configurações globais (WhatsApp, e-mail, etc.)
-│
-├── app/
-│   ├── Core/
-│   │   ├── Database.php    ← Singleton PDO
-│   │   ├── Model.php       ← Base model com CRUD genérico
-│   │   ├── Controller.php  ← Base controller (renderiza views)
-│   │   ├── Router.php      ← Roteador público (pattern matching)
-│   │   ├── Session.php     ← Gerenciamento de sessão + CSRF
-│   │   └── Helper.php      ← Utilidades (slug, money, upload, conversão de unidades)
-│   │
-│   ├── Controllers/        ← Controllers do site público
-│   │   ├── HomeController.php
-│   │   ├── ProdutosController.php
-│   │   ├── SobreController.php
-│   │   └── ContatoController.php
-│   │
-│   ├── Models/             ← Modelos (compartilhados entre público e admin)
-│   │   ├── Produto.php
-│   │   ├── Categoria.php
-│   │   ├── Insumo.php
-│   │   ├── CompraInsumo.php
-│   │   ├── FichaTecnica.php
-│   │   ├── Producao.php
-│   │   ├── Venda.php
-│   │   ├── Banner.php
-│   │   ├── Depoimento.php
-│   │   └── Usuario.php
-│   │
-│   └── Views/              ← Views do site público
-│       ├── layouts/default.php
-│       ├── home/index.php
-│       ├── produtos/{index,show}.php
-│       ├── sobre/index.php
-│       ├── contato/index.php
-│       └── errors/404.php
-│
-├── admin/
-│   ├── .htaccess           ← Rewrite rules do painel
-│   ├── index.php           ← Front controller admin
-│   ├── Controllers/        ← Controllers administrativos
-│   │   ├── AdminController.php     ← Base com render + auth
-│   │   ├── AuthController.php
-│   │   ├── DashboardController.php
-│   │   ├── CategoriasController.php
-│   │   ├── InsumosController.php
-│   │   ├── ComprasController.php
-│   │   ├── ProdutosAdminController.php
-│   │   ├── ProducaoController.php
-│   │   ├── VendasController.php
-│   │   ├── EstoqueController.php
-│   │   ├── BannersController.php
-│   │   └── DepoimentosController.php
-│   │
-│   └── Views/              ← Views do painel
-│       ├── layouts/default.php
-│       ├── login.php
-│       ├── dashboard/index.php
-│       ├── categorias/{index,form}.php
-│       ├── insumos/{index,form}.php
-│       ├── compras/{index,form}.php
-│       ├── produtos/{index,form,ficha}.php
-│       ├── producao/{index,form}.php
-│       ├── vendas/{index,form}.php
-│       ├── estoque/index.php
-│       ├── banners/{index,form}.php
-│       ├── depoimentos/{index,form}.php
-│       └── importacao/{index,form,historico}.php
-│
-├── assets/
-│   ├── css/style.css       ← Estilos do site público
-│   ├── css/admin.css       ← Estilos do painel admin
-│   ├── js/main.js          ← Scripts do site público (slider, tabs, nav)
-│   └── images/             ← Logo, favicon, imagens estáticas
-│
-├── uploads/                ← Arquivos enviados pelo admin
-│   ├── produtos/
-│   ├── banners/
-│   ├── depoimentos/
-│   └── categorias/
-│
-├── sql/
-│   ├── schema.sql          ← Criação das tabelas
-│   └── seed.sql            ← Dados iniciais de demonstração
-│
-└── setup/
-    └── install.php         ← Script de instalação (APAGAR após uso)
-```
+**Arquivo criado:** `robots.txt` (raiz do projeto — servido diretamente pelo Apache via .htaccess `!-f`)
+
+**Regras:**
+- `Allow: /` — indexação pública de todas as páginas relevantes
+- `Disallow: /admin/` — painel administrativo bloqueado
+- `Disallow: /config/` — arquivos de configuração PHP bloqueados
+- `Disallow: /app/` — código-fonte PHP bloqueado
+- `Disallow: /uploads/temp/` — diretório temporário bloqueado; `/uploads/` (imagens) permanece acessível
+- `Sitemap: https://irananatural.com.br/sitemap.xml`
 
 ---
 
-## 3. Arquitetura
+### 3. sitemap.xml
 
-**Padrão:** MVC simples sem framework  
-**Roteamento:** Pattern matching via query string `?url=`  
-**Autoload:** PSR-4-like manual via `spl_autoload_register`  
-**Banco:** PDO com prepared statements (proteção SQL Injection)  
-**Sessão:** PHP nativa com `session_regenerate_id` no login  
-**Uploads:** `move_uploaded_file` com validação de extensão e tamanho
+**Arquivo criado:** `sitemap.xml` (raiz do projeto — servido diretamente pelo Apache)
 
-### Namespaces
-| Namespace | Diretório |
-|-----------|-----------|
-| `App\Core\*` | `app/Core/` |
-| `App\Controllers\*` | `app/Controllers/` |
-| `App\Models\*` | `app/Models/` |
-| `Admin\Controllers\*` | `admin/Controllers/` |
+**10 URLs incluídas** com `lastmod`, `changefreq` e `priority`:
+- `/` — priority 1.0, weekly
+- `/produtos` — priority 0.9, weekly
+- `/sobre` — priority 0.7, monthly
+- `/como-comprar` — priority 0.8, monthly
+- `/pagamento`, `/envio`, `/garantia`, `/trocas` — priority 0.6, monthly
+- `/contato` — priority 0.5, monthly
+- `/politica-privacidade` — priority 0.4, yearly
+
+**Nota:** URLs de produtos individuais (`/produtos/{cat}/{slug}`) não incluídas — são dinâmicas e dependem de conteúdo no banco. Podem ser adicionadas com um SitemapController dinâmico futuramente.
 
 ---
 
-## 4. Modelagem do Banco
+### 4. Active state no menu de navegação
 
-### Tabelas Principais
+**Arquivo modificado:** `app/Views/layouts/default.php`
 
-| Tabela | Finalidade |
-|--------|-----------|
-| `usuarios` | Usuários do painel admin (v1.0) |
-| `configuracoes` | Pares chave-valor de config do site |
-| `categorias` | Categorias de produtos |
-| `insumos` | Matérias-primas com estoque e custo médio |
-| `compras_insumos` | Registro de entradas de insumos |
-| `produtos` | Produtos acabados |
-| `imagens_produtos` | Galeria de imagens dos produtos |
-| `fichas_tecnicas` | Composição dos produtos (receita por unidade) |
-| `producoes` | Registros de produção |
-| `mov_insumos` | Histórico de movimentações de insumos |
-| `mov_produtos` | Histórico de movimentações de produtos acabados |
-| `vendas` | Cabeçalho de vendas |
-| `vendas_itens` | Itens de cada venda |
-| `banners` | Banners da página inicial |
-| `depoimentos` | Depoimentos de clientes |
+**Implementação:** bloco PHP antes do `<header>` define `$_navPath` a partir de `$_GET['url']` e closure `$_active(string $seg): string` que retorna `' active'` quando:
+- `$seg === '/'` → match exato (home)
+- outros → `str_starts_with($_navPath, $seg)` (cobre subpáginas como `/produtos/cat/slug`)
 
-### Novos campos em `produtos` (v1.1)
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| `seo_titulo` | VARCHAR(70) | Título para mecanismos de busca (fallback: `nome`) |
-| `seo_descricao` | VARCHAR(160) | Meta description (fallback: `descricao_curta`) |
-| `tags` | TEXT | Tags separadas por vírgula (ex: `relaxante,floral,ansiedade`) |
-
-**Migration para instalações existentes:** executar `sql/migration_v1_1.sql`.  
-**Novas instalações:** `sql/schema.sql` já inclui as colunas.
+**CSS:** `.nav-link.active` já existia com `color: var(--verde-floresta); border-bottom-color: var(--verde-floresta)` — nenhum estilo novo necessário.
 
 ---
 
-## 5. Regras de Negócio
+### 5. Cross-links internos
 
-### 5.1 Custo Médio Ponderado (CMP)
-Ao registrar uma compra de insumo:
-```
-Novo CMP = (Estoque Atual × CMP Atual + Quantidade Comprada × Valor Unitário)
-           ÷ (Estoque Atual + Quantidade Comprada)
-```
-- Registrado automaticamente no momento da compra
-- Auditado: custo anterior e novo são gravados em `compras_insumos`
-- Todos os produtos que usam o insumo têm seu custo recalculado imediatamente
-
-### 5.2 Custo do Produto
-- Calculado a partir da ficha técnica: `SUM(quantidade_insumo × custo_médio_insumo)` por unidade
-- Conversão automática de unidades (g↔kg, ml↔l)
-- Lucro calculado: `preco_venda - custo_calculado`
-- Margem real: `(lucro / preco_venda) × 100`
-- Margem desejada: serve para sugerir preço e alertar quando abaixo
-
-### 5.3 Conversão de Unidades
-| Família | Unidades | Base |
-|---------|----------|------|
-| Peso | kg, g, mg | g |
-| Volume | l, ml | ml |
-| Unidade | un, pct, cx | unit (1:1) |
-
-Conversão entre famílias diferentes é **bloqueada** (alerta visual na ficha técnica).
-
-### 5.4 Produção
-1. Ficha técnica define insumos para **1 unidade** do produto
-2. Ao produzir N unidades, consome `N × quantidade_por_unidade` de cada insumo
-3. Se insumo insuficiente: **permite com alerta** (estoque pode ficar negativo)
-4. Perdas são registradas manualmente (quantidade + motivo)
-5. Incremento no estoque do produto = `quantidade_produzida - quantidade_perda`
-6. Insumos debitados por `quantidade_produzida` (incluindo perdas — foram consumidos)
-7. Custo real registrado com base no CMP atual no momento da produção
-
-### 5.5 Vendas
-1. Pedido com múltiplos produtos (cabeçalho + itens)
-2. Preço de venda pode diferir do preço cadastrado (desconto por pedido)
-3. Venda **bloqueada** se estoque do produto for insuficiente
-4. Ao confirmar: debita estoque, registra lucro por item
-5. Custo unitário capturado no momento da venda (snapshot histórico)
-
-### 5.6 Publicação de Produtos (v1.1)
-- Produto com `ativo = 0` é **invisível no site público** mas permanece **visível e editável no admin**
-- `Produto::allAtivos()` filtra `WHERE ativo = 1` (site público)
-- `Produto::allForAdmin()` retorna todos os produtos (admin) ordenados: ativos primeiro
-- A listagem admin mostra badges "Publicado" / "Rascunho"; linhas inativas têm opacidade reduzida
-- O formulário de edição exibe banner de aviso quando o produto é rascunho
-
-### 5.7 SEO e Schema.org (v1.1)
-- Cada página de produto gera `<meta name="description">` a partir de `seo_descricao` (fallback `descricao_curta`)
-- `<title>` usa `seo_titulo` (fallback `nome`)
-- `og:type = product` + `og:image` com a imagem principal
-- JSON-LD `Product` com `offers` (preço em BRL, disponibilidade por estoque) injetado no `<head>`
-- `Helper::md()` renderiza Markdown da `descricao_completa` em HTML seguro (escape HTML antes dos padrões)
-
-### 5.8 Tags (v1.1)
-- Armazenadas como string separada por vírgula: `relaxante,floral,ansiedade`
-- Input visual de chips no admin (Enter ou vírgula para adicionar, Backspace remove o último)
-- Exibidas como badges verdes na página pública do produto
-- Sem tabela separada — simplicidade prevalece sobre normalização
-
-### 5.9 Ordenação de Imagens (v1.1)
-- Coluna `ordem` em `imagens_produtos` determina a sequência (ASC)
-- Admin exibe galeria com botões ↑ ↓ por linha; cada clique envia POST e recarrega a página
-- `Produto::moverImagem()` normaliza os valores de `ordem` (0, 1, 2…) antes de trocar para evitar colisões
-- Primeiro `upload` de imagem em produto sem imagens torna-se automaticamente `principal = 1`
-- Excluir a imagem principal elege a primeira remanescente como nova principal
-
-### 5.10 Estoque
-- Ajustes manuais registram movimentação de auditoria
-- Estoque negativo de insumo é permitido (produção forçada) mas marcado com alerta
-- Alertas: item com `estoque_atual <= estoque_minimo`
+**Arquivos modificados:**
+- `app/Views/como-comprar/index.php` — `.section-crosslink` ao final das seções de pagamento (→ `/pagamento`) e entrega (→ `/envio`)
+- `app/Views/envio/index.php` — link inline para `/trocas` no alerta de avaria no transporte
+- `app/Views/pagamento/index.php` — link inline para `/trocas` no final da seção de recusas
+- `app/Views/garantia/index.php` — link inline para `/trocas` na seção de resolução aprovada
+- `app/Views/trocas/index.php` — link inline para `/garantia` na seção de defeito de fabricação
+- `assets/css/style.css` — nova classe `.section-crosslink` com estilo de texto pequeño + link verde
 
 ---
 
-## 6. Rotas
+## [2026-05-07] Revisão Geral — Páginas Institucionais (2ª rodada)
 
-### Site Público
-| URL | Controller | Método |
-|-----|-----------|--------|
-| `/` | HomeController | index |
-| `/produtos` | ProdutosController | index |
-| `/produtos/{cat}` | ProdutosController | categoria |
-| `/produtos/{cat}/{slug}` | ProdutosController | show |
-| `/sobre` | SobreController | index |
-| `/contato` | ContatoController | index |
-| `POST /contato/enviar` | ContatoController | enviar |
+### Escopo da revisão
+Todas as páginas institucionais implementadas nesta sessão: Como Comprar, Envio, Pagamento, Garantia, Trocas, Política de Privacidade, Contato.
 
-### Painel Admin
-| URL | Ação |
-|-----|------|
-| `/admin/login` | Login (GET+POST) |
-| `/admin/logout` | Logout |
-| `/admin/dashboard` | Dashboard |
-| `/admin/{modulo}` | Listagem |
-| `/admin/{modulo}/novo` | Formulário criação (GET) / Criar (POST) |
-| `/admin/{modulo}/{id}/editar` | Formulário edição (GET) / Atualizar (POST) |
-| `/admin/{modulo}/{id}/excluir` | Excluir (POST) |
-| `/admin/produtos/{id}/ficha` | Ficha técnica |
-| `/admin/producao/verificar/{prod}/{qtd}` | AJAX verificação de insumos |
-| `/admin/estoque/ajuste` | Ajuste de estoque (GET+POST) |
-| `POST /admin/produtos/{id}/imagem-principal/{imgId}` | Definir imagem principal |
-| `POST /admin/produtos/{id}/imagem-excluir/{imgId}` | Excluir imagem |
-| `POST /admin/produtos/{id}/imagem-mover/{imgId}` | Mover imagem (body: `direction=up\|down`) |
+### Problemas encontrados e corrigidos
 
----
+| # | Severidade | Problema | Correção aplicada |
+|---|---|---|---|
+| 1 | 🔴 Visual | `garantia`: seções "Prazo" e "Procedimento" tinham fundos idênticos (off-white consecutivo) | Reorganizados os `class` das 4 seções de conteúdo para alternância bege→off-white perfeita; adicionada regra `.section-institucional-alt .passo-numero` no CSS para o box-shadow do número no fundo bege |
+| 2 | 🟠 Copy | `politica-privacidade` seção 9: "72 horas úteis" (= 9 dias úteis) conflitava com "15 dias úteis" da seção 8 | Corrigido para "72 horas (3 dias corridos)" — prazo adequado para dúvidas gerais de privacidade |
+| 3 | 🟠 Conteúdo | `como-comprar`: Jadlog ausente do grid de entrega (presente em `/envio` mas omitido aqui) | Card "Correios — PAC ou SEDEX" atualizado para "Correios e Jadlog" com descrição cobrindo ambas as transportadoras |
+| 4 | 🟡 CSS | `.contato-aviso` usava `!important` para sobrescrever `.contato-item p` | Substituído por seletor mais específico `.contato-item .contato-aviso` sem `!important` |
 
-## 7. Instalação na HostGator
+### Arquivos modificados
+- `app/Views/garantia/index.php` — 4 classes de seção trocadas para alternância correta
+- `app/Views/politica-privacidade/index.php` — "72 horas úteis" → "72 horas (3 dias corridos)"
+- `app/Views/como-comprar/index.php` — card Correios inclui Jadlog
+- `assets/css/style.css` — nova regra `.section-institucional-alt .passo-numero`; seletor `.contato-item .contato-aviso` sem `!important`
 
-### Passo a passo
+### Validações confirmadas ✓
+- **Alternância de fundos**: todas as páginas alternam bege-claro ↔ off-white corretamente, sem seções consecutivas de mesmo fundo
+- **Rotas**: 9 rotas registradas e operacionais (`/`, `/produtos`, `/sobre`, `/contato`, `/como-comprar`, `/politica-privacidade`, `/envio`, `/pagamento`, `/garantia`, `/trocas`)
+- **Menus**: navbar com 5 links (Início, Produtos, Sobre, Como Comprar, Contato); sem duplicações
+- **Rodapé**: 4 colunas (Marca, Navegação, Informações, Contato); `footer-bottom` com link "Política de Privacidade" → `/politica-privacidade`
+- **Breadcrumbs**: todos presentes com `aria-label="Trilha de navegação"`
+- **SEO**: `title`, `description`, `canonical`, Open Graph em todas as 9 páginas
+- **Acessibilidade**: `aria-hidden` em ícones decorativos; `aria-label` em botões; `role="alert"` nos flashes do formulário; labels associados a inputs
+- **Links externos**: todos com `target="_blank" rel="noopener"` (ou `noopener noreferrer` em links não-WhatsApp)
+- **Constantes**: `WHATSAPP`, `EMAIL_CONTATO`, `INSTAGRAM_URL`, `APP_URL`, `APP_NAME` usadas consistentemente via constantes e `Helper::whatsapp()`
+- **Responsividade**: `.contato-grid` colapsa em 1024px; `.passos-grid` em 768px; `.pagamentos-grid` em 2 col a 480px; `.entrega-grid` em 1 col a 480px; `.footer-grid` em 2 col (1024px) e 1 col (768px)
+- **Consistência de componentes**: todos usam `.page-hero`, `.breadcrumb`, `.section-header`, `.label-small`, `.section-cta`, `.btn`, `.btn-light`, `.btn-lg`, `Helper::whatsapp()`
+- **Tipografia**: Cormorant Garamond + Lato; paleta verde/bege/marrom; CSS variables em toda a extensão
 
-1. **Fazer upload** de todos os arquivos via FTP para `public_html/`
-2. **Criar banco MySQL** no painel da HostGator (cPanel → MySQL Databases)
-3. **Editar** `config/database.php` com as credenciais do banco
-4. **Editar** `config/app.php` se necessário (URL, WhatsApp, etc.)
-5. **Acessar** `https://irananatural.com.br/setup/install.php`
-   - Isso criará as tabelas, o usuário admin e os dados de demonstração
-6. **Acessar** o painel: `https://irananatural.com.br/admin/login`
-7. **APAGAR** o arquivo `setup/install.php` imediatamente!
-8. **Adicionar logo** em `assets/images/logo.png` (recomendado: 200×60px, PNG transparente)
-9. **Adicionar favicon** em `assets/images/favicon.png` (32×32px)
-
-### Migrations em instalações existentes
-
-Toda alteração de banco (ALTER TABLE, CREATE TABLE, novos campos) é disponibilizada como um script PHP em `setup/migrate_vX_Y.php`. Para aplicar:
-
-1. **Fazer login** no painel admin (`/admin/login`)
-2. **Acessar** `https://irananatural.com.br/setup/migrate_vX_Y.php`
-   - O script valida a sessão admin antes de executar
-   - Cada passo é idempotente: colunas já existentes são ignoradas sem erro
-3. **APAGAR** o arquivo imediatamente após a confirmação
-
-| Arquivo | Versão | O que faz |
-|---------|--------|-----------|
-| `setup/install.php` | v1.0 | Cria todas as tabelas + usuário admin + seed |
-| `setup/migrate_v1_1.php` | v1.1 | Adiciona `seo_titulo`, `seo_descricao`, `tags` em `produtos` |
-| `setup/migrate_v1_2.php` | v1.2 | Adiciona `sku` em `produtos`; cria `import_history` e `import_errors` |
-
-> O arquivo `.sql` correspondente em `sql/` serve apenas como referência/documentação.
-
-### Versões mínimas
-- PHP 8.0+
-- MySQL 5.7+ / MariaDB 10.3+
-- mod_rewrite habilitado (HostGator: sim, por padrão)
-
-### Permissões de diretório
-```bash
-chmod 755 uploads/
-chmod 755 uploads/produtos/ uploads/banners/ uploads/depoimentos/ uploads/categorias/
-```
+### Melhorias futuras recomendadas
+1. **Cross-links internos**: em "Como Comprar", adicionar "Saiba mais →" nos cards de Pagamento e Entrega apontando para `/pagamento` e `/envio`
+2. **Nav active state**: marcar o link da página atual no menu com classe `active` — requer lógica PHP no layout comparando a URL atual
+3. **robots.txt e sitemap.xml**: criar para garantir indexação correta das rotas
+4. **Fontes auto-hospedadas**: substituir Google Fonts por arquivos locais (melhora LCP e elimina dependência externa)
+5. **Schema.org BreadcrumbList**: JSON-LD de breadcrumb nas páginas institucionais para enriquecer snippets no Google
+6. **CSRF no formulário de contato**: adicionar token CSRF ao `ContatoController@enviar` para prevenir envios automatizados
+7. **og:image por página**: imagens Open Graph específicas por página em vez de uma única imagem padrão
 
 ---
 
-## 8. Segurança
+## [2026-05-07] Página "Contato" — versão completa
 
-- PDO com prepared statements em todas as queries
-- `htmlspecialchars()` em todas as saídas
-- Senhas com `password_hash(PASSWORD_BCRYPT)`
-- `session_regenerate_id(true)` no login
-- Sessão com `httponly=true`, `samesite=Lax`
-- `Options -Indexes` no `.htaccess` (impede listagem de diretórios)
-- Upload: validação de extensão + tamanho máximo 5MB
-- Admin inacessível sem sessão válida
+### Rota
+`GET /contato` → `ContatoController@index` (rota já existia — view reescrita)
+`POST /contato/enviar` → `ContatoController@enviar` (inalterado)
 
----
+### Arquivos modificados
+- `app/Views/contato/index.php` — reescrita completa com mensagem institucional, 5 canais/items e formulário aprimorado
+- `app/Controllers/ContatoController.php` — meta description atualizada
+- `assets/css/style.css` — novas classes: `.contato-intro`, `.canal-badge`, `.contato-aviso`, `.form-intro`, `.form-obrigatorio`, `.form-privacidade`
 
-## 9. Paleta Visual e Tipografia
+### Estrutura da página
+1. **Hero** — título + breadcrumb + descrição acolhedora
+2. **Mensagem institucional** — `.contato-intro` em `.section-institucional-alt`: posiciona a marca como atendimento humano e artesanal; indica WhatsApp como canal principal
+3. **Grid de canais + formulário** — `.section-contato` com `.contato-grid` (2 colunas, colapsa em 1024px):
+   - **Esquerda** — 5 itens: WhatsApp (badge "Mais rápido"), E-mail, Instagram, Horário de Atendimento, Retirada Pessoal
+   - **Direita** — formulário com intro, campos (nome, e-mail, assunto, mensagem), submit, nota de privacidade com link para `/politica-privacidade`
 
-| Token | Valor | Uso |
-|-------|-------|-----|
-| `--verde-floresta` | `#2C5F2E` | Cor principal, CTA, header admin |
-| `--verde-oliva` | `#5D7A3A` | Destaques, hover |
-| `--bege-claro` | `#F5EFE3` | Seções alternadas |
-| `--off-white` | `#FDFAF4` | Background principal |
-| `--marrom` | `#6B4E37` | Detalhes, bordas |
-
-**Fonts:** Cormorant Garamond (títulos) + Lato (corpo) via Google Fonts
-
----
-
-## 10. Melhorias Futuras
-
-- [ ] Integração com Nuvemshop para e-commerce completo
-- [ ] Controle de lotes e validade de insumos
-- [ ] Múltiplos usuários com permissões granulares
-- [ ] Relatórios PDF (vendas, produção, estoque)
-- [ ] Emissão de nota fiscal (NF-e)
-- [ ] Cálculo de frete
-- [ ] Disparo de e-mail marketing
-- [ ] App mobile para gestão de produção
-- [ ] Controle por código de barras (EAN/QR)
-- [ ] Integração com gateways de pagamento
+### Regras de negócio aplicadas
+- **WhatsApp**: canal principal — (51) 99229-6036, indicado para pedidos, dúvidas e suporte ágil
+- **E-mail**: EMAIL_CONTATO; resposta em até **2 dias úteis**
+- **Instagram**: @irananatural; DMs respondidas quando possível (sem SLA)
+- **Horário**: Seg–Sex 9h–18h; Sáb 9h–13h; mensagens fora do horário respondidas no próximo período
+- **Endereço físico**: não publicado — combinado via WhatsApp após confirmação do pedido
+- **FAQ**: não incluído (decisão do cliente)
+- **Formulário**: campos com `maxlength`, `autocomplete`, `novalidate` (validação server-side pelo ContatoController existente); nota de privacidade linká à `/politica-privacidade`
+- **Estorno cartão**: N/A nesta página
+- **Canais adicionais**: nenhum além de WhatsApp, Instagram e e-mail
 
 ---
 
-## 12. Sistema de Importação (v1.2)
+## [2026-05-07] Página "Trocas e Devoluções" — versão completa
 
-### Entidades Suportadas
-| Entidade | Tabela | Identificação |
-|----------|--------|---------------|
-| `produtos` | `produtos` | SKU (preferencial) → slug derivado do nome |
-| `insumos`  | `insumos`  | Nome (case-insensitive) |
-| `estoque`  | `produtos` / `insumos` | SKU ou nome para produtos; nome para insumos |
+### Rota
+`GET /trocas` → `TrocasController@index` (rota já existia — view e controller reescritos)
 
-### Formatos Aceitos
-- **CSV**: separador auto-detectado (`;`, `,`, `\t`, `|`); encoding auto-detectado (UTF-8, ISO-8859-1, Windows-1252)
-- **XLSX**: leitura pura PHP via ZipArchive + SimpleXML (sem extensão extra); strings compartilhadas, células esparsas e booleans suportados
-- Tamanho máximo: 5 MB | Máximo de 2000 linhas de dados por importação
+### Arquivos modificados
+- `app/Views/trocas/index.php` — reescrita completa com política de trocas e devoluções detalhada
+- `app/Controllers/TrocasController.php` — meta description atualizada
 
-### Fluxo de Importação
-1. Usuário acessa `/admin/importacao/{entidade}`
-2. Seleciona o modo de importação e faz upload do arquivo
-3. Sistema faz preview via AJAX (`POST /admin/importacao/{entidade}/preview`):
-   - Parseia o arquivo (CSV ou XLSX)
-   - Mapeia cabeçalhos para nomes canônicos via aliases
-   - Valida cada linha e retorna status por linha
-4. Usuário revisa a tabela de preview com indicadores coloridos:
-   - ✅ ok (verde) — linha válida, será importada
-   - ⚠️ warning (amarelo) — tem avisos mas será importada
-   - ❌ error (vermelho) — erro de validação, será ignorada
-   - ⏭️ skip (cinza) — ignorada pelo modo de importação selecionado
-5. Usuário confirma → `POST /admin/importacao/{entidade}/processar`
-6. Resultado exibido com contadores e detalhes de erros
-7. Importação registrada em `import_history`
+### Estrutura da página
+1. **Hero** — título + breadcrumb
+2. **Motivos aceitos** — `.sobre-valores` com 4 cards: arrependimento, defeito, avaria, produto divergente
+3. **Procedimento** — `.passos-grid` com 3 etapas: acionamento WhatsApp → devolução física → análise e resolução
+4. **Detalhes por motivo** — `.section-institucional-alt`: regras específicas de cada motivo (prazos, condições, frete)
+5. **Frete reverso** — `.section-institucional`: tabela textual de responsabilidade por motivo
+6. **Reembolso e estorno** — `.section-institucional-alt`: por forma de pagamento (PIX/TED 3 dias úteis, cartão estorno InfinitePay, dinheiro presencial), troca por equivalente
+7. **Recusas** — `.section-institucional`: fora do prazo, produto com uso (arrependimento), mau uso, vencido, alergia a ingrediente listado
+8. **CTA** — botão WhatsApp
 
-### Estrutura de Colunas por Entidade
-
-**Produtos** (obrigatórias: `nome`, `categoria`, `preco_venda`):
-```
-nome, sku, categoria, descricao_curta, descricao_completa, modo_uso, cuidados,
-preco_venda, margem_desejada, estoque_atual, estoque_minimo,
-tags, seo_titulo, seo_descricao, ativo
-```
-
-**Insumos** (obrigatórias: `nome`, `unidade_medida`):
-```
-nome, descricao, unidade_medida, fornecedor, custo_medio, estoque_atual, estoque_minimo
-```
-
-**Estoque** (obrigatórias: `identificador`, `tipo`, `quantidade`):
-```
-identificador, tipo (produto|insumo), quantidade, observacao
-```
-
-### Validações Aplicadas
-- Campos obrigatórios não podem estar vazios
-- `preco_venda` e `custo_medio`: número positivo (aceita `R$ 1.234,56`, `1234.56`, `1234,56`)
-- `quantidade` (estoque): número não-negativo, pode ser 0
-- `unidade_medida`: deve ser `kg`, `g`, `mg`, `l`, `ml`, `un`, `pct` ou `cx`
-- `tipo` (estoque): deve ser `produto` ou `insumo`
-- `categoria` (produto): deve existir na tabela `categorias` com `ativo = 1`
-- Duplicatas de `nome` ou `sku` dentro do arquivo geram aviso
-- Referência não encontrada no DB gera skip ou erro
-
-### Modos de Importação
-| Modo | Comportamento |
-|------|--------------|
-| `criar` | Insere apenas registros não existentes; existentes são ignorados (skip) |
-| `atualizar` | Atualiza apenas registros existentes; não-existentes são ignorados (skip) |
-| `criar_atualizar` | Insere se não existe, atualiza se existe |
-
-### Lógica de Identificação (SKU Matching)
-- **Produtos**: busca primeiro por `sku` (exato); se não encontrar, busca por `slug` derivado do `nome`
-- Slug único garantido: se já existe, adiciona sufixo `-2`, `-3`, etc.
-- **Insumos**: busca por `nome` (case-insensitive, LOWER())
-- **Estoque/Produto**: busca por `sku`, depois por `nome` (case-insensitive)
-- **Estoque/Insumo**: busca por `nome` (case-insensitive)
-
-### Campo `ativo` (Produtos)
-Valores aceitos como `true`: `sim`, `s`, `yes`, `y`, `1`, `true`, `ativo`, `publicado`  
-Tudo mais → `0` (inativo)  
-**Célula vazia**: trata como `1` (ativo por padrão — coluna ausente ou vazia não desativa o produto)
-
-### Imagens
-Imagens **não são importadas**. Após a importação, cada produto deve ter suas imagens adicionadas manualmente via `/admin/produtos/{id}/editar`. A interface de import exibe um aviso claro sobre isso.
-
-### Tabelas de Controle
-| Tabela | Finalidade |
-|--------|-----------|
-| `import_history` | Registro de cada importação (entidade, modo, arquivo, contadores) |
-| `import_errors`  | Erros detalhados por linha (import_id, linha, campo, valor, mensagem) |
-
-### Migration
-Para instalações existentes executar: `setup/migrate_v1_2.php`
-- Adiciona `sku VARCHAR(100) NULL UNIQUE` em `produtos`
-- Cria `import_history` e `import_errors`
-
-### Correções Aplicadas (v1.2 — validação completa)
-
-| # | Arquivo | Problema | Correção |
-|---|---------|----------|----------|
-| 1 | `app/Core/CsvParser.php` | Linhas de comentário (`#`) tratadas como dados, quebrando import do template CSV | Adiciona skip de linhas onde `$line[0]` começa com `#` |
-| 2 | `admin/Views/importacao/form.php` | `file-info` sempre visível — `display:flex` no final do inline style sobrepunha `display:none` | Remove o `display:flex` duplicado; JS já aplica `flex` ao mostrar |
-| 3 | `admin/Controllers/ImportacaoController.php` | Re-preview após troca de modo acumulava arquivos temporários órfãos em `uploads/temp/` | Limpa o arquivo temp anterior (se existir) antes de salvar o novo |
-| 4 | `app/Core/Importador.php` | `ativo` com célula vazia → `toBool('')` = 0 (inativo); produto importado sem coluna ficaria oculto | Trata string vazia como padrão ativo (1); só aplica `toBool` se valor não for vazio |
-| 5 | `admin/Views/importacao/form.php` | Troca de modo não re-analisava o arquivo — preview continuava mostrando resultado do modo anterior | Listener de radio chama `doPreview()` automaticamente se `selectedFile` existe e `importDone` é false |
-| 6 | `admin/Views/importacao/form.php` | Sem aviso de que imagens não são importadas; usuário poderia esperar que fossem | Adiciona banner informativo fixo para entidade `produtos` |
-| 7 | `admin/Views/importacao/form.php` | Grid de resultado `repeat(4,1fr)` quebrava em telas <600px | Adiciona `@media` para `repeat(2,1fr)` em mobile |
-| 8 | `admin/Views/importacao/historico.php` | Botão de filtro ativo sem distinção visual — usuário não sabia qual filtro estava selecionado | Aplica `outline` via JS para destacar o botão ativo; inicializa "Todos" com outline |
-
-### Arquivos Criados/Modificados (v1.2)
-- `app/Core/CsvParser.php` — parser CSV com detecção de encoding, delimitador e skip de comentários
-- `app/Core/XlsxParser.php` — parser XLSX puro PHP via ZipArchive + SimpleXML
-- `app/Core/Importador.php` — lógica central de mapeamento, validação e processamento
-- `app/Models/ImportHistory.php` — modelo de histórico de importação
-- `admin/Controllers/ImportacaoController.php` — controller admin com cleanup de temp files
-- `admin/Views/importacao/index.php` — página inicial com cards e histórico recente
-- `admin/Views/importacao/form.php` — UI de upload + preview + importação (JS puro, corrigida)
-- `admin/Views/importacao/historico.php` — tabela completa de histórico com filtro visual
-- `sql/migration_v1_2.sql` — SQL puro para referência
-- `setup/migrate_v1_2.php` — script PHP de migration com auth e idempotência
-- `uploads/temp/.htaccess` — nega acesso direto aos arquivos temporários
+### Regras de negócio aplicadas
+- **Arrependimento** (CDC art. 49): 7 dias corridos do recebimento; produto lacrado sem uso; frete retorno por conta do cliente; reembolso somente valor do produto (frete original não reembolsado)
+- **Defeito de fabricação** (CDC art. 26, I): 30 dias corridos; frete retorno por conta da Iraná Natural
+- **Avaria no transporte**: 30 dias corridos; frete retorno por conta da Iraná Natural
+- **Produto divergente**: 30 dias corridos; frete retorno por conta da Iraná Natural
+- **Análise**: 2 dias úteis após recebimento do produto devolvido
+- **Reembolso**: até 3 dias úteis após aprovação; PIX/TED direto; estorno no cartão via InfinitePay (prazo adicional conforme banco emissor)
+- **Troca**: produto equivalente enviado sem custo de frete adicional; prazo informado pelo WhatsApp
+- **Recusas**: fora do prazo, produto aberto/com uso (arrependimento), mau uso, armazenamento inadequado, após validade, reação a ingrediente listado
+- **Exceção alergia**: coberta se o ingrediente causador NÃO estava listado na composição (erro de descrição)
+- **Produtos personalizados**: não existem — todos são de linha padrão; nenhuma exclusão adicional de arrependimento
 
 ---
 
-## 11. Decisões Técnicas
+## [2026-05-07] Página "Garantia de Qualidade" — versão completa
 
-| Decisão | Motivo |
-|---------|--------|
-| Sem Composer | Máxima compatibilidade com shared hosting |
-| Autoloader manual | Evita dependência de Composer em produção |
-| Bootstrap/CSS próprio | CSS custom para visual artesanal específico |
-| Chart.js CDN | Gráficos sem dependência de build |
-| `mail()` PHP | Nativo no HostGator, sem configuração SMTP |
-| PDO singleton | Uma conexão por request |
-| Sem JS framework | Vanilla JS é suficiente para a escala atual |
-| Slug no banco | Não recalculado em tempo real para performance |
-| Custo médio no banco | Snapshot atual para auditoria histórica de vendas |
-| EasyMDE CDN | Editor Markdown leve sem API key, sem build step |
-| `Helper::md()` manual | Renderiza Markdown em HTML sem Composer (admin-authored, escape-first) |
-| Tags como CSV | Simples, sem tabela extra; suficiente para a escala atual |
-| Imagem-mover POST | Reordenação server-side com redirecionamento; sem drag-and-drop JS complexo |
+### Rota
+`GET /garantia` → `GarantiaController@index` (rota já existia — view e controller reescritos)
+
+### Arquivos modificados
+- `app/Views/garantia/index.php` — reescrita completa com política de garantia detalhada
+- `app/Controllers/GarantiaController.php` — meta description atualizada
+
+### Estrutura da página
+1. **Hero** — título + breadcrumb
+2. **Compromisso de qualidade** — `.sobre-valores` com 3 cards: ingredientes naturais, produção artesanal, embalagem protetora
+3. **Prazo e elegibilidade** — `.institucional-conteudo`: prazo 30 dias CDC art. 26 I (não duráveis), vícios ocultos (CDC art. 26 §3º), produtos elegíveis
+4. **Procedimento** — `.passos-grid` com 3 etapas: contato WhatsApp → devolução física → análise e resolução
+5. **Análise e condições de aprovação** — `.section-institucional-alt`: o que é avaliado, condições para aprovação, opções de resolução (troca ou reembolso CDC art. 18)
+6. **Exclusões** — `.section-institucional`: mau uso, armazenamento inadequado, produto vencido, reações a ingredientes listados, resultado estético subjetivo
+7. **Responsabilidades do cliente** — `.section-institucional-alt`: inspeção no recebimento, armazenamento correto, uso dentro do prazo, leitura de ingredientes, acionamento no prazo
+8. **CTA** — botão WhatsApp
+
+### Regras de negócio aplicadas
+- **Classificação CDC**: produtos não duráveis (cosméticos, sabonetes, óleos) → prazo de 30 dias corridos (CDC art. 26, I)
+- **Vícios ocultos**: prazo começa da descoberta do defeito (CDC art. 26, §3º)
+- **Garantia adicional**: não há prazo contratual adicional fixo — análise caso a caso com boa-fé
+- **Devolução física**: obrigatória antes da aprovação — análise não é feita apenas por fotos
+- **Frete de retorno**: Iraná Natural arca com os custos em casos de defeito de fabricação ou dano no transporte
+- **Prazo de análise**: até 2 dias úteis após o recebimento do produto devolvido
+- **Resolução**: troca por produto equivalente ou reembolso via PIX/TED — definido caso a caso (CDC art. 18)
+- **Reações alérgicas**: cobertas apenas se o ingrediente causador NÃO estava listado na descrição (erro de omissão); reações a ingredientes listados são responsabilidade do cliente
+- **Exclusões**: mau uso, armazenamento inadequado, uso após validade, resultado estético subjetivo, reação a ingredientes listados
 
 ---
 
-*Documento mantido pelo desenvolvedor. Atualizar a cada decisão relevante.*
+## [2026-05-07] Página "Pagamento" — versão completa
+
+### Rota
+`GET /pagamento` → `PagamentoController@index` (rota já existia — apenas a view foi reescrita)
+
+### Arquivo modificado
+- `app/Views/pagamento/index.php` — reescrita completa com conteúdo financeiro e operacional detalhado
+- `app/Controllers/PagamentoController.php` — meta description atualizada
+
+### Estrutura da página
+1. **Hero** — título + breadcrumb
+2. **Métodos aceitos** — `.pagamentos-grid` com 4 cards: PIX, Transferência Bancária, Cartão Crédito/Débito, Dinheiro
+3. **Fluxo de pagamento** — `.passos-grid` com 3 etapas: escolha → informe como pagar → pedido confirmado
+4. **Detalhes por método** — `.section-institucional-alt` / `.institucional-conteudo`: PIX (chave aleatória, 24h), TED/DOC (mesmo dia / próximo dia útil), Cartão (link InfinitePay + maquininha + parcelamento com juros), Dinheiro (retirada)
+5. **Segurança das transações** — `.section-institucional`: InfinitePay PCI DSS, E2E WhatsApp, sem armazenamento de dados de cartão
+6. **Confirmação e recusas** — `.section-institucional-alt`: prazos por método, pedido não pago no prazo, recusa de cartão (motivos + orientações)
+7. **CTA** — botão WhatsApp
+
+### Regras de negócio aplicadas
+- **PIX**: chave aleatória enviada pelo WhatsApp; válida por **24 horas**; após o prazo a reserva é cancelada
+- **TED**: compensação no mesmo dia útil (dentro do horário bancário)
+- **DOC**: compensação no próximo dia útil
+- **Cartão de crédito**: link InfinitePay ou maquininha na retirada; parcelamento em até 12x **com juros** (taxas informadas antes de confirmar — valores serão detalhados em atualização futura)
+- **Cartão de débito**: à vista, via link InfinitePay ou maquininha presencial
+- **Dinheiro**: exclusivamente na retirada pessoal, troco disponível se informado antes
+- **Dados de cartão**: processados integralmente pela InfinitePay (PCI DSS); Iraná Natural não tem acesso
+- **Recusa de cartão**: cliente deve contatar o banco emissor; alternativas (PIX, TED) oferecidas pelo WhatsApp
+- **Pedido não pago**: reserva cancelada após 24h; reaberto via WhatsApp se disponível
+
+---
+
+## [2026-05-07] Página "Envio" — versão completa
+
+### Rota
+`GET /envio` → `EnvioController@index` (rota já existia — apenas a view foi reescrita)
+
+### Arquivo modificado
+- `app/Views/envio/index.php` — reescrita completa com conteúdo logístico detalhado
+
+### Estrutura da página
+1. **Hero** — título + breadcrumb
+2. **Jornada do pedido** — `.passos-grid` com 3 etapas: confirmação → embalagem → postagem e rastreamento
+3. **Formas de envio** — `.entrega-grid` com 6 cards: Correios PAC, Correios SEDEX, Jadlog, Motoboy/Uber Flash, Entrega local, Retirada pessoal
+4. **Frete e rastreamento** — `.institucional-conteudo`: cálculo via WhatsApp, links de rastreamento Correios e Jadlog
+5. **Políticas de entrega** — `.institucional-conteudo`: prazo de postagem, possíveis atrasos, endereço incorreto, tentativas, pacote devolvido
+6. **CTA** — botão WhatsApp
+
+### Regras de negócio aplicadas
+- **Prazo de postagem**: sem prazo fixo — combinado caso a caso via WhatsApp antes da confirmação
+- **Frete grátis**: não existe — custo sempre calculado e aprovado antes de confirmar
+- **Endereço incorreto**: custo de reenvio é responsabilidade do cliente
+- **Tentativas Correios**: 3 tentativas; se sem sucesso, objeto retorna ao remetente
+- **Jadlog**: tentativas conforme política interna da transportadora (não fixado)
+- **Pacote devolvido**: cliente paga novo frete; produto reservado por 30 dias aguardando contato
+- **Rastreamento**: código enviado via WhatsApp após postagem; links para rastreamento.correios.com.br e Jadlog
+
+---
+
+## [2026-05-07] Política de Privacidade e Segurança (LGPD robusta)
+
+### Rota
+`GET /politica-privacidade` → `PoliticaPrivacidadeController@index`
+Rota anterior `GET /seguranca` **removida** (controller e view de `/seguranca` permanecem no disco como arquivos órfãos — podem ser excluídos manualmente quando conveniente).
+
+### Arquivos criados
+- `app/Controllers/PoliticaPrivacidadeController.php`
+- `app/Views/politica-privacidade/index.php`
+
+### Arquivos modificados
+- `index.php` — rota `/seguranca` substituída por `/politica-privacidade`
+- `app/Views/layouts/default.php` — link do rodapé atualizado de `/seguranca` para `/politica-privacidade`; link "Política de Privacidade" adicionado ao `footer-bottom`
+- `assets/css/style.css` — novos estilos: `.politica-data`, `.politica-table-wrap`, `table`/`th`/`td` dentro de `.institucional-conteudo`, `code` dentro de `.institucional-conteudo`, `.footer-bottom a`
+
+### Estrutura da página
+1. **Hero** — título + breadcrumb
+2. **Visão geral** — 4 cards de compromisso (coleta mínima, LGPD, transações seguras, direitos)
+3. **Política completa** (10 seções em `.institucional-conteudo`):
+   - Seção 1: Quem somos / Controladora
+   - Seção 2: Dados coletados (fornecidos + automáticos + o que NÃO coletamos)
+   - Seção 3: Finalidade e bases legais — tabela com base LGPD art. 7º por tipo de dado
+   - Seção 4: Cookies — tabela funcionais (PHPSESSID) + analytics (GA4: _ga, _gid, _ga_*)
+   - Seção 5: Compartilhamento — Correios, Google, operadoras, autoridades
+   - Seção 6: Retenção — tabela com prazos + alerta sobre 5 anos de histórico de compras
+   - Seção 7: Segurança das transações — HTTPS, E2E WhatsApp, bcrypt, sem dados de cartão
+   - Seção 8: Direitos do titular — 8 direitos LGPD art. 18 + alerta de limitação para histórico
+   - Seção 9: Canal de contato — e-mail + WhatsApp + menção à ANPD
+   - Seção 10: Alterações da política
+4. **CTA** — botão WhatsApp
+
+### Regras de negócio críticas aplicadas
+- **Sem CNPJ**: controladora identificada apenas como "Iraná Natural" com e-mail de contato
+- **Google Analytics (GA4)**: cookies _ga, _gid, _ga_* documentados com duração e opt-out via Google
+- **DPO**: não há DPO designado — contato@irananatural.com.br responde por assuntos de privacidade
+- **Retenção de histórico de compras**: mínimo de **5 anos** por defesa em litígios (CPC art. 206) e CDC
+- **Limitação de exclusão**: dados vinculados a histórico de pedidos não podem ser excluídos durante os 5 anos; política explica a limitação e o fundamento legal (LGPD art. 7º, II e V); solicitações respondidas em até 15 dias úteis
+- **Menção à ANPD**: titular pode recorrer à Autoridade Nacional de Proteção de Dados (LGPD art. 18, § 1º)
+
+---
+
+## [2026-05-07] Página "Como Comprar"
+
+### Rota
+`GET /como-comprar` → `ComoComprarController@index`
+
+### Arquivos criados
+- `app/Controllers/ComoComprarController.php`
+- `app/Views/como-comprar/index.php`
+
+### Arquivos modificados
+- `index.php` — rota `como-comprar` registrada
+- `app/Views/layouts/default.php` — link "Como Comprar" adicionado ao menu principal e ao rodapé
+- `assets/css/style.css` — estilos das seções: `.passos-grid`, `.pagamento-card`, `.entrega-card` e responsivos
+
+### Estrutura da página
+1. **Hero** — título + breadcrumb (padrão `.page-hero`)
+2. **Passos** — grid 3 colunas com linha conectora decorativa, colapsa em 1 coluna no mobile (≤768px)
+3. **Pagamentos** — 4 cards: PIX, Transferência Bancária, Cartão, Dinheiro
+4. **Entrega** — 4 cards: Correios, Motoboy/Uber Flash, Entrega Local, Retirada Pessoal
+5. **CTA** — botão WhatsApp (reutiliza `.section-cta` existente)
+
+### Regras de negócio aplicadas
+- Processo de compra exclusivamente via WhatsApp (sem carrinho)
+- Pagamentos: PIX, TED/DOC, cartão (link ou maquininha), dinheiro (só retirada)
+- Entrega: Correios (todo Brasil), motoboy/Uber, entrega local e retirada — região Porto Alegre / Grande POA
+- Prazos e valores de frete não fixados na página — combinados pelo WhatsApp
+
+---
+
+## [2026-05-07] Páginas Institucionais (5 páginas)
+
+### Rotas criadas
+| Rota | Controller |
+|---|---|
+| `GET /seguranca` | `SegurancaController@index` |
+| `GET /envio` | `EnvioController@index` |
+| `GET /pagamento` | `PagamentoController@index` |
+| `GET /garantia` | `GarantiaController@index` |
+| `GET /trocas` | `TrocasController@index` |
+
+### Arquivos criados
+- `app/Controllers/SegurancaController.php`
+- `app/Controllers/EnvioController.php`
+- `app/Controllers/PagamentoController.php`
+- `app/Controllers/GarantiaController.php`
+- `app/Controllers/TrocasController.php`
+- `app/Views/seguranca/index.php`
+- `app/Views/envio/index.php`
+- `app/Views/pagamento/index.php`
+- `app/Views/garantia/index.php`
+- `app/Views/trocas/index.php`
+
+### Arquivos modificados
+- `index.php` — 5 novas rotas registradas
+- `app/Views/layouts/default.php` — nova coluna "Informações" no rodapé com links para as 5 páginas
+- `assets/css/style.css` — classes `.institucional-conteudo`, `.alerta-info`, `.section-institucional`, `.section-institucional-alt`; footer-grid expandido de 3 para 4 colunas
+
+### Regras de negócio aplicadas
+- **Segurança/LGPD**: sem CNPJ — usa apenas "Iraná Natural" e e-mail de contato; dados coletados: telefone/WhatsApp e endereço de entrega
+- **Envio**: Iraná Natural arca com frete de retorno em caso de defeito ou dano no transporte
+- **Pagamento**: cartão de crédito em até 12x (link ou maquininha); dinheiro apenas na retirada
+- **Garantia**: satisfação garantida, análise caso a caso pelo WhatsApp
+- **Trocas**: prazo de 7 dias corridos (CDC); Iraná arca com frete de retorno em caso de defeito; devolução por arrependimento: produto lacrado, frete por conta do cliente
+- **Contato**: página já existia em `/contato` — ignorada nesta implementação
+
+---
+
+## [2026-05-07] Revisão Geral — Páginas Institucionais
+
+### Problemas encontrados e corrigidos
+
+| # | Severidade | Problema | Correção aplicada |
+|---|---|---|---|
+| 1 | 🔴 Visual | "Como Comprar" duplicado no rodapé (Navegação e Informações) | Removido de `footer-info`; mantido apenas em `footer-links` |
+| 2 | 🔴 Visual | `.alerta-info` invisível dentro de `.section-institucional-alt` (mesma cor de fundo) | Adicionada regra `.section-institucional-alt .alerta-info { background: var(--branco) }` |
+| 3 | 🟠 UX | `.passos-grid` colapsava em 1 coluna em 1024px — tablets têm espaço para 3 colunas | Regra movida de `@media (max-width: 1024px)` para `@media (max-width: 768px)` |
+| 4 | 🟠 Consistência | `seguranca/index.php` era a única página sem CTA ao final | Adicionada `.section-cta` com botão WhatsApp |
+| 5 | 🟡 Copy | CTA em `como-comprar` usava "Fale" (imperativo); outras usam "Falar" (infinitivo) | Padronizado para "Falar pelo WhatsApp" |
+
+### Validações confirmadas ✓
+- Rotas: todas as 6 rotas registradas e operacionais em `index.php`
+- Menus: navbar com 5 links corretos (Início, Produtos, Sobre, Como Comprar, Contato); sem itens duplicados
+- Rodapé: 4 colunas (Marca, Navegação, Informações, Contato); sem duplicações após correção
+- Breadcrumbs: todos corretos e com `aria-label="Trilha de navegação"`
+- SEO: `title`, `description`, `canonical` e Open Graph em todas as 6 páginas
+- Acessibilidade: `aria-hidden` em ícones decorativos; `aria-label` em botões de ação
+- Links externos (WhatsApp): todos com `target="_blank" rel="noopener"`
+- Identidade visual: Cormorant Garamond + Lato, paleta verde/bege/marrom, CSS variables em toda a extensão
+- Responsividade: breakpoints 1024px, 768px, 480px cobrindo todas as novas seções
+
+### Melhorias futuras recomendadas
+1. **Cross-links internos**: adicionar links de "Saiba mais" em "Como Comprar" apontando para `/pagamento` e `/envio`
+2. **robots.txt e sitemap.xml**: criar para garantir indexação correta das novas rotas
+3. **Fontes auto-hospedadas**: substituir Google Fonts por arquivos locais para melhorar LCP e eliminar dependência externa
+4. **Schema.org BreadcrumbList**: adicionar JSON-LD de breadcrumb nas páginas institucionais para enriquecer SERP
+5. **Política de cookies**: se o site crescer e usar analytics, adicionar aviso de cookies integrado à `/seguranca`
+6. **Link "Política de Privacidade" no footer-bottom**: adicionar link para `/seguranca` na barra inferior do rodapé (boa prática legal)
+
+---
+
+## [2026-05-07] Auditoria de Resíduos — Limpeza de Arquivos Órfãos
+
+### Escopo
+Auditoria completa de arquivos, pastas, assets, scripts e estruturas não utilizados.
+
+### REMOVIDOS (seguro — confiança alta)
+
+| Arquivo/Pasta | Motivo |
+|---|---|
+| `app/Controllers/SegurancaController.php` | Controlador órfão — rota `/seguranca` removida do `index.php` em implementação anterior; substituído por `PoliticaPrivacidadeController` |
+| `app/Views/seguranca/index.php` + diretório | View órfã — carregada exclusivamente pelo controlador acima; conteúdo superseded por `politica-privacidade/index.php` |
+| `error_log` (raiz) | Log de erros PHP em runtime, 1.885 linhas — não é código do projeto; expõe caminhos absolutos e detalhes do servidor se acessado |
+
+### CORRIGIDO — Bug crítico de imagens
+
+**`assets/images/` estava completamente vazio.** O sistema de templates referencia:
+- `assets/images/logo.png` — header, footer, admin login, admin layout
+- `assets/images/favicon.png` — aba do browser
+- `assets/images/og-default.jpg` — OG:image de fallback para produtos sem foto
+
+**Correções aplicadas:**
+- `assets/img/logo.png` copiado → `assets/images/logo.png`
+- `img/ico/favicon_32x32.png` copiado → `assets/images/favicon.png`
+
+**Pendência:** `assets/images/og-default.jpg` ainda não existe. Criar uma imagem OG de fallback (1200×630px, JPEG) com identidade visual da marca e salvar neste caminho.
+
+### PROTEGIDO — setup/
+
+`setup/.htaccess` criado com `Deny from all` — impede acesso web direto aos scripts de instalação/migração (`install.php`, `migrate_v1_1.php`, `migrate_v1_2.php`). `robots.txt` atualizado com `Disallow: /setup/`.
+
+### SIMPLIFICADO — JS active nav
+
+Bloco "Ativar link de navegação corrente" removido de `assets/js/main.js` (linhas 89–99). Lógica idêntica já existia via closure PHP `$_active()` no `default.php` — remoção elimina redundância e fonte de verdade duplicada.
+
+### PRECISA VALIDAÇÃO MANUAL (não removido automaticamente)
+
+| Arquivo/Pasta | Situação |
+|---|---|
+| `assets/img/` (logo.png, logo1.png) | Nenhuma referência de código aponta para `assets/img/`. Após cópia para `assets/images/`, pode ser removido. |
+| `img/` (raiz — ico/ e logo/) | Nenhuma referência de código. `ico/` tem 8 arquivos de favicon; `logo/` tem 2 logos circulares. Após resolver o og-default.jpg, pode ser removido. |
+

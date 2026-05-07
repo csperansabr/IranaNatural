@@ -33,6 +33,13 @@
 </head>
 <body>
 
+<?php
+$_navPath = '/' . trim($_GET['url'] ?? '', '/');
+$_active  = function(string $seg) use ($_navPath): string {
+    if ($seg === '/') return $_navPath === '/' ? ' active' : '';
+    return str_starts_with($_navPath, $seg) ? ' active' : '';
+};
+?>
 <!-- ===== NAVEGAÇÃO ===== -->
 <header class="site-header" id="site-header">
     <nav class="navbar container">
@@ -46,10 +53,11 @@
         </button>
 
         <ul class="nav-menu" id="nav-menu">
-            <li><a href="<?= APP_URL ?>/" class="nav-link">Início</a></li>
-            <li><a href="<?= APP_URL ?>/produtos" class="nav-link">Produtos</a></li>
-            <li><a href="<?= APP_URL ?>/sobre" class="nav-link">Sobre</a></li>
-            <li><a href="<?= APP_URL ?>/contato" class="nav-link">Contato</a></li>
+            <li><a href="<?= APP_URL ?>/" class="nav-link<?= $_active('/') ?>">Início</a></li>
+            <li><a href="<?= APP_URL ?>/produtos" class="nav-link<?= $_active('/produtos') ?>">Produtos</a></li>
+            <li><a href="<?= APP_URL ?>/sobre" class="nav-link<?= $_active('/sobre') ?>">Sobre</a></li>
+            <li><a href="<?= APP_URL ?>/como-comprar" class="nav-link<?= $_active('/como-comprar') ?>">Como Comprar</a></li>
+            <li><a href="<?= APP_URL ?>/contato" class="nav-link<?= $_active('/contato') ?>">Contato</a></li>
         </ul>
     </nav>
 </header>
@@ -74,7 +82,19 @@
                 <li><a href="<?= APP_URL ?>/">Início</a></li>
                 <li><a href="<?= APP_URL ?>/produtos">Produtos</a></li>
                 <li><a href="<?= APP_URL ?>/sobre">Sobre</a></li>
+                <li><a href="<?= APP_URL ?>/como-comprar">Como Comprar</a></li>
                 <li><a href="<?= APP_URL ?>/contato">Contato</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-info">
+            <h4>Informações</h4>
+            <ul>
+                <li><a href="<?= APP_URL ?>/pagamento">Pagamento</a></li>
+                <li><a href="<?= APP_URL ?>/envio">Envio e Entrega</a></li>
+                <li><a href="<?= APP_URL ?>/garantia">Garantia</a></li>
+                <li><a href="<?= APP_URL ?>/trocas">Trocas e Devoluções</a></li>
+                <li><a href="<?= APP_URL ?>/politica-privacidade">Privacidade e Segurança</a></li>
             </ul>
         </div>
 
@@ -91,7 +111,7 @@
 
     <div class="footer-bottom">
         <div class="container">
-            <p>&copy; <?= date('Y') ?> <?= APP_NAME ?>. Todos os direitos reservados.</p>
+            <p>&copy; <?= date('Y') ?> <?= APP_NAME ?>. Todos os direitos reservados. &middot; <a href="<?= APP_URL ?>/politica-privacidade">Política de Privacidade</a></p>
         </div>
     </div>
 </footer>

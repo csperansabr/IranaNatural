@@ -86,18 +86,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// ---- Ativar link de navegação corrente ----
-(function () {
-    const path  = window.location.pathname;
-    const links = document.querySelectorAll('.nav-link');
-    links.forEach(link => {
-        const href = new URL(link.href, location.origin).pathname;
-        if (href === '/' ? path === '/' : path.startsWith(href)) {
-            link.classList.add('active');
-        }
-    });
-})();
-
 // ---- Galeria de imagens nos cards da listagem ----
 (function () {
     document.querySelectorAll('.card-gallery[data-images]').forEach(gallery => {

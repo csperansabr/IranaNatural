@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+    <!-- Página inicial -->
+    <url>
+        <loc>https://irananatural.com.br/</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Catálogo de produtos -->
+    <url>
+        <loc>https://irananatural.com.br/produtos</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Sobre -->
+    <url>
+        <loc>https://irananatural.com.br/sobre</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+
+    <!-- Como Comprar -->
+    <url>
+        <loc>https://irananatural.com.br/como-comprar</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Formas de Pagamento -->
+    <url>
+        <loc>https://irananatural.com.br/pagamento</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Envio e Entrega -->
+    <url>
+        <loc>https://irananatural.com.br/envio</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Garantia -->
+    <url>
+        <loc>https://irananatural.com.br/garantia</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Trocas e Devoluções -->
+    <url>
+        <loc>https://irananatural.com.br/trocas</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <!-- Contato -->
+    <url>
+        <loc>https://irananatural.com.br/contato</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- Política de Privacidade -->
+    <url>
+        <loc>https://irananatural.com.br/politica-privacidade</loc>
+        <lastmod>2026-05-07</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.4</priority>
+    </url>
+
+</urlset>

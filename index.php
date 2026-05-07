@@ -35,8 +35,14 @@ $router->get('produtos',              'ProdutosController','index');
 $router->get('produtos/{cat}',        'ProdutosController','categoria');
 $router->get('produtos/{cat}/{slug}', 'ProdutosController','show');
 $router->get('sobre',                 'SobreController',   'index');
-$router->get('contato',               'ContatoController', 'index');
-$router->post('contato/enviar',       'ContatoController', 'enviar');
+$router->get('contato',               'ContatoController',    'index');
+$router->post('contato/enviar',       'ContatoController',    'enviar');
+$router->get('como-comprar',          'ComoComprarController', 'index');
+$router->get('politica-privacidade',  'PoliticaPrivacidadeController', 'index');
+$router->get('envio',                 'EnvioController',       'index');
+$router->get('pagamento',             'PagamentoController',   'index');
+$router->get('garantia',              'GarantiaController',    'index');
+$router->get('trocas',                'TrocasController',      'index');
 
 $url    = trim($_GET['url'] ?? '', '/');
 $method = $_SERVER['REQUEST_METHOD'];
