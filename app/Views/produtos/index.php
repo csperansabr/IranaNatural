@@ -58,16 +58,31 @@
             </div>
             <div class="produtos-grid">
                 <?php foreach ($produtos as $produto): ?>
+                <?php
+                // Monta array de URLs para galeria do card
+                $cardImagens = [];
+                if (!empty($produto['todas_imagens'])) {
+                    foreach (explode('|', $produto['todas_imagens']) as $p) {
+                        $cardImagens[] = Helper::upload($p);
+                    }
+                } elseif (!empty($produto['imagem_principal'])) {
+                    $cardImagens[] = Helper::upload($produto['imagem_principal']);
+                }
+                $cardHref = APP_URL . '/produtos/' . $produto['categoria_slug'] . '/' . $produto['slug'];
+                ?>
                 <div class="produto-card">
-                    <a href="<?= APP_URL ?>/produtos/<?= $produto['categoria_slug'] ?>/<?= $produto['slug'] ?>" class="produto-card-img-wrap">
-                        <?php if (!empty($produto['imagem_principal'])): ?>
-                        <img src="<?= Helper::upload($produto['imagem_principal']) ?>"
-                             alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                             loading="lazy">
-                        <?php else: ?>
-                        <div class="produto-img-placeholder">🌿</div>
-                        <?php endif; ?>
-                    </a>
+                    <div class="card-gallery"
+                         <?= count($cardImagens) > 1 ? 'data-images=\'' . htmlspecialchars(json_encode($cardImagens, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') . '\'' : '' ?>>
+                        <a href="<?= $cardHref ?>" class="produto-card-img-wrap">
+                            <?php if (!empty($cardImagens)): ?>
+                            <img src="<?= $cardImagens[0] ?>"
+                                 alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
+                                 loading="lazy">
+                            <?php else: ?>
+                            <div class="produto-img-placeholder">🌿</div>
+                            <?php endif; ?>
+                        </a>
+                    </div>
                     <div class="produto-card-body">
                         <span class="produto-categoria"><?= htmlspecialchars($produto['categoria_nome'], ENT_QUOTES, 'UTF-8') ?></span>
                         <h3 class="produto-nome">

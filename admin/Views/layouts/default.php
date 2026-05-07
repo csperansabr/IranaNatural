@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/admin.css">
     <meta name="robots" content="noindex, nofollow">
+    <?php if (isset($pageStyles)) echo $pageStyles; ?>
 </head>
 <body>
 <div class="adm-wrapper">
@@ -54,6 +55,14 @@
             <a href="/admin/estoque" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/estoque') ? 'active' : '' ?>">
                 <span class="adm-nav-icon">📦</span> Estoque
             </a>
+
+            <div class="adm-nav-section">Ferramentas</div>
+            <a href="/admin/importacao" class="adm-nav-link <?= (str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/importacao') && !str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/importacao/historico')) ? 'active' : '' ?>">
+                <span class="adm-nav-icon">📥</span> Importar Dados
+            </a>
+            <a href="/admin/importacao/historico" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/importacao/historico') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">📋</span> Histórico
+            </a>
         </nav>
 
         <div class="adm-sidebar-footer">
@@ -90,5 +99,6 @@
 // Sidebar mobile toggle
 document.getElementById('adm-sidebar');
 </script>
+<?php if (isset($pageScripts)) echo $pageScripts; ?>
 </body>
 </html>

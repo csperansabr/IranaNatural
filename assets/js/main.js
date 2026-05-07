@@ -97,3 +97,66 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         }
     });
 })();
+
+// ---- Galeria de imagens nos cards da listagem ----
+(function () {
+    document.querySelectorAll('.card-gallery[data-images]').forEach(gallery => {
+        let images;
+        try { images = JSON.parse(gallery.getAttribute('data-images')); } catch (e) { return; }
+        if (!images || images.length < 2) return;
+
+        const img = gallery.querySelector('img');
+        if (!img) return;
+
+        let current = 0;
+
+        // Botão anterior
+        const btnPrev = document.createElement('button');
+        btnPrev.type = 'button';
+        btnPrev.className = 'card-gallery-btn prev';
+        btnPrev.innerHTML = '&#8249;';
+        btnPrev.setAttribute('aria-label', 'Imagem anterior');
+
+        // Botão próximo
+        const btnNext = document.createElement('button');
+        btnNext.type = 'button';
+        btnNext.className = 'card-gallery-btn next';
+        btnNext.innerHTML = '&#8250;';
+        btnNext.setAttribute('aria-label', 'Próxima imagem');
+
+        // Dots
+        const dotsWrap = document.createElement('div');
+        dotsWrap.className = 'card-gallery-dots';
+        const dots = images.map((_, i) => {
+            const dot = document.createElement('button');
+            dot.type = 'button';
+            dot.className = 'card-gallery-dot' + (i === 0 ? ' active' : '');
+            dot.setAttribute('aria-label', 'Imagem ' + (i + 1));
+            dot.addEventListener('click', e => { e.preventDefault(); goTo(i); });
+            dotsWrap.appendChild(dot);
+            return dot;
+        });
+
+        function goTo(idx) {
+            current = (idx + images.length) % images.length;
+            img.style.opacity = '0';
+            setTimeout(() => { img.src = images[current]; img.style.opacity = '1'; }, 150);
+            dots.forEach((d, i) => d.classList.toggle('active', i === current));
+        }
+
+        btnPrev.addEventListener('click', e => { e.preventDefault(); goTo(current - 1); });
+        btnNext.addEventListener('click', e => { e.preventDefault(); goTo(current + 1); });
+
+        gallery.appendChild(btnPrev);
+        gallery.appendChild(btnNext);
+        gallery.appendChild(dotsWrap);
+
+        // Swipe em touch
+        let touchStartX = 0;
+        gallery.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        gallery.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(dx) > 40) goTo(dx < 0 ? current + 1 : current - 1);
+        }, { passive: true });
+    });
+})();

@@ -67,4 +67,14 @@ abstract class AdminController
     public function ficha(int $id): void   { $this->redirect('/admin/dashboard'); }
     public function salvarFicha(int $id): void   { $this->redirect('/admin/dashboard'); }
     public function excluirFichaItem(int $prodId, int $itemId): void { $this->redirect('/admin/produtos'); }
+    public function setPrincipalImagem(int $prodId, int $imgId): void { $this->redirect('/admin/produtos/' . $prodId . '/editar'); }
+    public function excluirImagemProduto(int $prodId, int $imgId): void { $this->redirect('/admin/produtos/' . $prodId . '/editar'); }
+    public function moverImagem(int $prodId, int $imgId): void { $this->redirect('/admin/produtos/' . $prodId . '/editar'); }
+
+    // Import stubs — overridden by ImportacaoController
+    public function form(string $entidade): void       { $this->redirect('/admin/importacao'); }
+    public function preview(string $entidade): void    { $this->json(['error' => 'Não implementado'], 501); }
+    public function processar(string $entidade): void  { $this->json(['error' => 'Não implementado'], 501); }
+    public function modelo(string $entidade): void     { $this->redirect('/admin/importacao'); }
+    public function historico(): void                  { $this->redirect('/admin/importacao'); }
 }
