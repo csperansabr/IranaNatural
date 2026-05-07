@@ -10,17 +10,24 @@ class ContatoController extends Controller
     {
         $flash = Session::flash('contato_ok');
         $erro  = Session::flash('contato_erro');
+        $csrf  = Session::csrfToken();
 
         $meta = [
             'title'       => 'Contato — ' . APP_NAME,
-            'description' => 'Entre em contato com a Iraná Natural via WhatsApp, e-mail ou formulário. Estamos aqui para atender você.',
+            'description' => 'Fale com a Iraná Natural pelo WhatsApp (51) 99229-6036, por e-mail ou pelo formulário. Atendimento de segunda a sexta das 9h às 18h e sábado das 9h às 13h.',
             'url'         => APP_URL . '/contato',
         ];
-        $this->render('contato/index', compact('meta', 'flash', 'erro'));
+        $this->render('contato/index', compact('meta', 'flash', 'erro', 'csrf'));
     }
 
     public function enviar(): void
     {
+        if (!Session::verifyCsrf($_POST['_csrf'] ?? '')) {
+            Session::flash('contato_erro', 'Erro de segurança. Recarregue a página e tente novamente.');
+            $this->redirect(APP_URL . '/contato');
+            return;
+        }
+
         $nome    = trim($_POST['nome']    ?? '');
         $email   = trim($_POST['email']   ?? '');
         $assunto = trim($_POST['assunto'] ?? '');

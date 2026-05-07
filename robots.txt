@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /config/
+Disallow: /app/
+Disallow: /uploads/temp/
+Disallow: /setup/
+
+Sitemap: https://irananatural.com.br/sitemap.xml
