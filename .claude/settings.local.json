@@ -15,7 +15,11 @@
       "PowerShell(New-Item -ItemType Directory -Force -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\\\\app\\\\Views\\\\politica-privacidade\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\" -Recurse -Force)",
       "Bash(Select-Object -Property FullName)",
-      "PowerShell(Get-ChildItem -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\" -Recurse -Force | Select-Object -Property FullName | Sort-Object FullName | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\" -Recurse -Force | Select-Object -Property FullName | Sort-Object FullName | ForEach-Object { $_.FullName })",
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\\\\setup\\\\importar-insumos\\\\logs\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Diretório criado\")",
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Projetos\\\\WebSite\\\\IranaNatural\\\\setup\\\\importar-insumos\\\\logs\" -Force)"
     ]
   }
 }

@@ -450,3 +450,92 @@ Bloco "Ativar link de navegação corrente" removido de `assets/js/main.js` (lin
 | `assets/img/` (logo.png, logo1.png) | Nenhuma referência de código aponta para `assets/img/`. Após cópia para `assets/images/`, pode ser removido. |
 | `img/` (raiz — ico/ e logo/) | Nenhuma referência de código. `ico/` tem 8 arquivos de favicon; `logo/` tem 2 logos circulares. Após resolver o og-default.jpg, pode ser removido. |
 
+
+---
+
+## [2026-05-07] Correção do Sistema de Imagens e Banner
+
+### Causa raiz identificada
+
+4 problemas distintos, todos com causas estruturais:
+
+| # | Problema | Localização | Causa |
+|---|---|---|---|
+| 1 | Imagens quebradas em dev | `config/app.php` | `APP_URL` hardcoded para `https://irananatural.com.br`; em ambiente local, `Helper::upload()` gera URLs para domínio de produção → browser recebe página PHP de 404 como conteúdo da imagem |
+| 2 | Sem fallback para arquivo ausente | `home/index.php`, `produtos/index.php`, `produtos/show.php` | `<img>` sem `onerror`; quando o arquivo existe no banco mas não no disco, exibe ícone de imagem quebrada ao invés do placeholder |
+| 3 | Banner com slider (errado) | `home/index.php` | Multi-slide com prev/next/dots/animação automática; comportamento correto é banner estático único, sem controles |
+| 4 | Galeria de produto sem navegação | `produtos/show.php` e `main.js` | Galeria de detalhe tinha apenas miniaturas com `onclick` global; sem setas, dots ou suporte a swipe |
+
+### Solução aplicada
+
+**`config/app.php`** — APP_URL dinâmico:
+```php
+if (isset($_SERVER['HTTP_HOST'])) {
+    $scheme = ... ? 'https' : 'http';
+    define('APP_URL', $scheme . '://' . $_SERVER['HTTP_HOST']);
+} else {
+    define('APP_URL', 'https://irananatural.com.br'); // fallback CLI
+}
+```
+Funciona em dev (localhost/qualquer host) e produção sem configuração adicional.
+
+**`assets/images/placeholder.svg`** — criado SVG neutral com paleta da marca (bege #F5EFE3, stroke #C5B9AA).
+
+**`onerror` em todos os `<img>` de upload**:
+```html
+onerror="this.onerror=null;this.src='/assets/images/placeholder.svg'"
+```
+Cobertura: home destaques, listagem de produtos, galeria principal do produto, miniaturas, produtos relacionados.
+
+**`home/index.php`** — banner simplificado:
+- Removido `banner-slider` com múltiplos slides e JS
+- Novo `.banner-hero` estático: exibe apenas `$banners[0]` sem controles
+- Fallback `hero-default` preservado para quando não há banners cadastrados
+
+**`produtos/show.php`** — galeria de detalhe redesenhada:
+- Setas `#galeria-prev` / `#galeria-next` sobrepostas no `.galeria-main` (apenas se > 1 imagem)
+- `.galeria-dots` com `role="tablist"` e `aria-selected` por dot
+- Miniaturas mantidas para desktop
+- `onclick="trocarImagem(this)"` removido (substituído por event listeners)
+
+**`assets/js/main.js`** — limpeza e novo módulo:
+- Removido: IIFE do banner slider (morto)
+- Removido: função global `trocarImagem` (substituída)
+- Adicionado: IIFE `Galeria de produto` com prev/next, dots sync, thumb sync e swipe touch (threshold 40px)
+
+**`assets/css/style.css`** — novos estilos:
+- `.banner-hero` — banner estático com `background-size: cover`, alturas responsivas (520/360/300px)
+- `.galeria-prev`, `.galeria-next` — setas sobre `.galeria-main` (position absolute, z-index 5)
+- `.galeria-dot` / `.galeria-dot.active` — indicadores com transição de escala
+- `.galeria-main { position: relative }` e `img { transition: opacity 0.18s }`
+- Media queries atualizadas para `.banner-hero`
+
+### Componentes alterados
+
+| Arquivo | Tipo de alteração |
+|---|---|
+| `config/app.php` | APP_URL dinâmico |
+| `app/Views/home/index.php` | Banner estático + onerror |
+| `app/Views/produtos/index.php` | onerror na listagem |
+| `app/Views/produtos/show.php` | Galeria completa: prev/next/dots/swipe/onerror |
+| `assets/css/style.css` | .banner-hero + galeria nav |
+| `assets/js/main.js` | Remove slider/trocarImagem, adiciona galeria IIFE |
+| `assets/images/placeholder.svg` | Criado — SVG de fallback para imagens ausentes |
+
+### Comportamento após correção
+
+- **Home banner**: 1 imagem estática, sem controles, sem animação. Fallback gradient se sem banner
+- **Listagem**: card-gallery com prev/next/dots em hover (comportamento inalterado — era correto)
+- **Produto detalhe (1 imagem)**: imagem principal estática, sem setas/dots
+- **Produto detalhe (N imagens)**: seta ← imagem → seta + dots + miniaturas + swipe mobile
+- **Imagem ausente em qualquer página**: placeholder SVG neutro ao invés de ícone quebrado
+- **Ambiente dev**: URLs geradas com `http://localhost` (ou host atual), não mais `https://irananatural.com.br`
+
+### Melhorias futuras recomendadas
+
+1. **Lazy loading na galeria de detalhe**: pré-carregar imagem seguinte em background para transição sem flash
+2. **Zoom na imagem principal**: modal ou zoom in-place ao clicar (melhora UX desktop)
+3. **Aspect ratio automático**: galeria adaptar altura conforme dimensão real das imagens (evitar crop agressivo em imagens não-quadradas)
+4. **WebP**: converter uploads para WebP no upload via admin (redução de 30-40% do tamanho)
+5. **og-default.jpg**: criar imagem OG de fallback 1200×630 com identidade visual para produtos sem foto
+

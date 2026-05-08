@@ -2,34 +2,20 @@
 
 <!-- ===== HERO / BANNER ===== -->
 <section class="hero" id="hero">
-    <?php if (!empty($banners)): ?>
-    <div class="banner-slider" id="banner-slider">
-        <?php foreach ($banners as $i => $banner): ?>
-        <div class="banner-slide <?= $i === 0 ? 'active' : '' ?>"
-             style="<?= $banner['imagem'] ? 'background-image:url(' . Helper::upload($banner['imagem']) . ')' : '' ?>">
-            <div class="banner-overlay">
-                <?php if ($banner['titulo']): ?>
-                <h1 class="banner-title"><?= htmlspecialchars($banner['titulo'], ENT_QUOTES, 'UTF-8') ?></h1>
-                <?php endif; ?>
-                <?php if ($banner['subtitulo']): ?>
-                <p class="banner-subtitle"><?= htmlspecialchars($banner['subtitulo'], ENT_QUOTES, 'UTF-8') ?></p>
-                <?php endif; ?>
-                <a href="<?= APP_URL ?>/produtos" class="btn btn-light">Conhecer produtos</a>
-            </div>
+    <?php if (!empty($banners)):
+          $b = $banners[0]; ?>
+    <div class="banner-hero"<?= $b['imagem'] ? ' style="background-image:url(' . Helper::upload($b['imagem']) . ')"' : '' ?>>
+        <div class="banner-overlay">
+            <?php if ($b['titulo']): ?>
+            <h1 class="banner-title"><?= htmlspecialchars($b['titulo'], ENT_QUOTES, 'UTF-8') ?></h1>
+            <?php endif; ?>
+            <?php if ($b['subtitulo']): ?>
+            <p class="banner-subtitle"><?= htmlspecialchars($b['subtitulo'], ENT_QUOTES, 'UTF-8') ?></p>
+            <?php endif; ?>
+            <a href="<?= APP_URL ?>/produtos" class="btn btn-light">Conhecer produtos</a>
         </div>
-        <?php endforeach; ?>
-        <?php if (count($banners) > 1): ?>
-        <button class="slider-prev" aria-label="Anterior">&#8592;</button>
-        <button class="slider-next" aria-label="Próximo">&#8594;</button>
-        <div class="slider-dots">
-            <?php foreach ($banners as $i => $_): ?>
-            <button class="dot <?= $i === 0 ? 'active' : '' ?>" data-index="<?= $i ?>" aria-label="Slide <?= $i+1 ?>"></button>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
     </div>
     <?php else: ?>
-    <!-- Placeholder quando não há banners cadastrados -->
     <div class="hero-default">
         <div class="hero-default-content">
             <div class="hero-leaf-dec">✦</div>
@@ -111,7 +97,8 @@
                     <?php if ($produto['imagem_principal']): ?>
                     <img src="<?= Helper::upload($produto['imagem_principal']) ?>"
                          alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                         loading="lazy">
+                         loading="lazy"
+                         onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/images/placeholder.svg'">
                     <?php else: ?>
                     <div class="produto-img-placeholder">🌿</div>
                     <?php endif; ?>

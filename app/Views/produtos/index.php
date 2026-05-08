@@ -77,7 +77,8 @@
                             <?php if (!empty($cardImagens)): ?>
                             <img src="<?= $cardImagens[0] ?>"
                                  alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                                 loading="lazy">
+                                 loading="lazy"
+                                 onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/images/placeholder.svg'">
                             <?php else: ?>
                             <div class="produto-img-placeholder">🌿</div>
                             <?php endif; ?>
