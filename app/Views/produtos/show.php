@@ -20,22 +20,38 @@
     <div class="container produto-detalhe-grid">
 
         <!-- Galeria -->
-        <div class="produto-galeria">
-            <?php if (!empty($imagens)): ?>
+        <div class="produto-galeria" id="galeria-wrapper">
+            <?php if (!empty($imagens)):
+                  $multiImg = count($imagens) > 1; ?>
             <div class="galeria-main" id="galeria-main">
                 <img src="<?= Helper::upload($imagens[0]['caminho']) ?>"
                      alt="<?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                     id="galeria-img-principal">
+                     id="galeria-img-principal"
+                     onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/images/placeholder.svg'">
+                <?php if ($multiImg): ?>
+                <button class="galeria-prev" id="galeria-prev" aria-label="Imagem anterior">&#8249;</button>
+                <button class="galeria-next" id="galeria-next" aria-label="Próxima imagem">&#8250;</button>
+                <?php endif; ?>
             </div>
-            <?php if (count($imagens) > 1): ?>
+            <?php if ($multiImg): ?>
+            <div class="galeria-dots" id="galeria-dots" role="tablist" aria-label="Imagens do produto">
+                <?php foreach ($imagens as $i => $img): ?>
+                <button class="galeria-dot <?= $i === 0 ? 'active' : '' ?>"
+                        data-index="<?= $i ?>"
+                        role="tab"
+                        aria-label="Imagem <?= $i + 1 ?>"
+                        aria-selected="<?= $i === 0 ? 'true' : 'false' ?>"></button>
+                <?php endforeach; ?>
+            </div>
             <div class="galeria-thumbs">
                 <?php foreach ($imagens as $i => $img): ?>
                 <button class="galeria-thumb <?= $i === 0 ? 'active' : '' ?>"
                         data-src="<?= Helper::upload($img['caminho']) ?>"
-                        onclick="trocarImagem(this)">
+                        aria-label="Ver imagem <?= $i + 1 ?>">
                     <img src="<?= Helper::upload($img['caminho']) ?>"
                          alt="Imagem <?= $i + 1 ?> de <?= htmlspecialchars($produto['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                         loading="lazy">
+                         loading="lazy"
+                         onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/images/placeholder.svg'">
                 </button>
                 <?php endforeach; ?>
             </div>
@@ -140,7 +156,8 @@
                     <?php if (!empty($rel['imagem_principal'])): ?>
                     <img src="<?= Helper::upload($rel['imagem_principal']) ?>"
                          alt="<?= htmlspecialchars($rel['nome'], ENT_QUOTES, 'UTF-8') ?>"
-                         loading="lazy">
+                         loading="lazy"
+                         onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/images/placeholder.svg'">
                     <?php else: ?>
                     <div class="produto-img-placeholder">🌿</div>
                     <?php endif; ?>
