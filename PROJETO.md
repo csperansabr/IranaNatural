@@ -2,6 +2,93 @@
 
 ---
 
+## [2026-05-08] Correção Regra PIX + Auditoria Completa v3.0
+
+### Problema identificado
+
+O desconto PIX era calculado **sobre o subtotal total** (`subtotal × 5%`), em vez de ser aplicado **individualmente no preço unitário** de cada item. Isso criava inconsistência entre o que estava armazenado em `pedido_itens` (preço original), o que era enviado à InfinitePay (preço com ratio aplicado internamente), e o que era exibido nas views.
+
+### Regra de negócio corrigida
+
+```
+valor_unitario_pix = round(preco_venda × (1 - 5/100), 2)
+valor_total_item   = valor_unitario_pix × quantidade
+total_pedido       = Σ(valor_total_item) + frete
+```
+
+**NÃO realizado:** desconto aplicado sobre subtotal (`subtotal × pct`).
+
+### Arquivos alterados
+
+#### Backend — lógica de negócio
+
+**`app/Core/InfinitePayProvider.php`**
+- Removido cálculo de ratio interno (`$pixPct`, `$ratio`, `* $ratio`).
+- Provider agora recebe preços finais nos itens e os envia diretamente à API InfinitePay (sem transformação adicional).
+- Única fonte de verdade para desconto: `CheckoutController`.
+
+**`app/Models/Pedido.php` — `criar()`**
+- Alterado: `$total = round($subtotal + $frete, 2)` (antes: `$subtotal + $frete - $desconto`).
+- O campo `desconto` em `pedidos` agora é **armazenado para exibição e auditoria**, não para dedução do total — pois o desconto já está embutido nos preços dos itens.
+
+**`app/Controllers/CheckoutController.php` — `finalizar()`**
+- Desconto PIX aplicado por item antes de montar `$pedidoItens`.
+- `pedido_itens.preco_unitario` = preço com desconto (ex: R$ 95,00).
+- `pedido_itens.subtotal` = `preco_unitario_pix × quantidade`.
+- `pedidos.desconto` = diferença monetária real (ex: R$ 10,00), armazenada como referência.
+- `pedidos.desconto_pix_pct` = percentual (ex: 5.00), para referência e exibição.
+- `pagamentos.valor_original` = subtotal original antes do desconto (auditoria).
+- `pagamentos.valor_desconto` = desconto monetário exato.
+- `pagamentos.valor_cobrado` = total efetivamente cobrado.
+
+**`app/Controllers/CheckoutController.php` — `confirmar()`**
+- Cálculo do total também corrigido para usar desconto por item.
+
+#### Frontend — exibição
+
+**`app/Views/checkout/confirmar.php`**
+- Quando PIX: exibe preço original (riscado) + preço PIX por item.
+- Sidebar já exibia subtotal/desconto/total corretamente.
+
+**`app/Views/checkout/obrigado.php`**
+- Desconto PIX exibido como "você economizou R$ X,XX" (informativo).
+- Mostra percentual aplicado (`desconto_pix_pct`).
+
+**`admin/Views/pedidos/ver.php`**
+- Cabeçalho da coluna indica "(c/ PIX)" para pedidos PIX.
+- Por item: exibe preço original riscado + preço PIX em verde.
+- Rodapé: "Economia com PIX" (informativo, não deduzido do total).
+- Nota: "Desconto PIX de X% aplicado individualmente em cada item".
+
+**`assets/css/style.css`**
+- Adicionados: `.preco-riscado` (tachado, cinza) e `.preco-pix-item` (verde escuro).
+
+#### Limpeza técnica
+
+- Removido: `config/database_old.php` (obsoleto).
+- Removido: `assets/images/logo_old.png` (obsoleto).
+
+### Consistência final entre camadas
+
+| Camada | Preço exibido |
+|--------|--------------|
+| Listagem produtos | Original + PIX (5% OFF badge) |
+| Página produto | Original + PIX + parcelamento |
+| Carrinho | Original por item; total PIX no sidebar |
+| Checkout confirmar | Original riscado + PIX por item |
+| Checkout obrigado | Preço PIX por item + economia total |
+| Pedido (DB) | `preco_unitario` = preço PIX; `desconto` = economia |
+| InfinitePay payload | Preços finais (PIX já aplicado) |
+| Admin pedidos | Preço PIX + original riscado + nota de economia |
+
+### Pontos críticos de configuração (não alterados — requerem ajuste manual)
+
+- `config/payment.php` → `INFINITEPAY_WEBHOOK_SECRET` deve ser trocado por um segredo aleatório forte.
+- `config/payment.php` → `INFINITEPAY_HANDLE` deve ser o InfiniteTag da conta em produção.
+- `config/database.php` → credenciais devem ser variáveis de ambiente em produção.
+
+---
+
 ## [2026-05-07] Melhorias Prioritárias (Segurança, UX, SEO)
 
 ### 1. CSRF Protection no formulário de contato

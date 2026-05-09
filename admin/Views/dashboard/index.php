@@ -33,6 +33,61 @@ $pageTitle = 'Dashboard';
     </div>
 </div>
 
+<!-- Stats E-commerce do Mês -->
+<?php if (!empty($pedidosStats)): ?>
+<div class="adm-stats" style="margin-top:1.5rem">
+    <div class="adm-stat azul">
+        <div class="adm-stat-label">Pedidos Aguardando</div>
+        <div class="adm-stat-value"><?= (int)($pedidosStats['aguardando'] ?? 0) ?></div>
+        <div class="adm-stat-sub"><a href="/admin/pedidos?status=aguardando_pagamento" style="color:inherit">Ver pedidos</a></div>
+    </div>
+    <div class="adm-stat verde">
+        <div class="adm-stat-label">Pedidos Pagos (mês)</div>
+        <div class="adm-stat-value"><?= (int)($pedidosStats['pagos'] ?? 0) ?></div>
+        <div class="adm-stat-sub"><?= Helper::money((float)($pedidosStats['receita_total'] ?? 0)) ?></div>
+    </div>
+    <div class="adm-stat laranja">
+        <div class="adm-stat-label">Receita PIX</div>
+        <div class="adm-stat-value"><?= Helper::money((float)($pedidosStats['receita_pix'] ?? 0)) ?></div>
+        <div class="adm-stat-sub">mês atual</div>
+    </div>
+    <div class="adm-stat roxo">
+        <div class="adm-stat-label">Receita Cartão</div>
+        <div class="adm-stat-value"><?= Helper::money((float)($pedidosStats['receita_cartao'] ?? 0)) ?></div>
+        <div class="adm-stat-sub">mês atual</div>
+    </div>
+</div>
+
+<!-- Pedidos recentes do mês -->
+<div class="adm-card" style="margin-bottom:1.5rem">
+    <div class="adm-card-header">
+        <span class="adm-card-title">🛍️ Pedidos Online — mês atual</span>
+        <a href="/admin/pedidos" class="adm-btn adm-btn-secondary adm-btn-sm">Ver todos</a>
+    </div>
+    <div class="adm-card-body" style="padding:0">
+        <table class="adm-table">
+            <thead><tr><th>Número</th><th>Cliente</th><th>Forma</th><th>Total</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            <?php if (empty($pedidosRecentes)): ?>
+            <tr><td colspan="6" style="text-align:center;color:#718096;padding:1.5rem">Nenhum pedido no mês.</td></tr>
+            <?php else: ?>
+            <?php foreach (array_slice($pedidosRecentes, 0, 8) as $ped): ?>
+            <tr>
+                <td><code><?= htmlspecialchars($ped['numero'], ENT_QUOTES, 'UTF-8') ?></code></td>
+                <td><?= htmlspecialchars($ped['cliente_nome'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= \App\Models\Pedido::pagamentoLabel($ped['forma_pagamento']) ?></td>
+                <td><?= Helper::money((float)$ped['total']) ?></td>
+                <td><span class="adm-status <?= \App\Models\Pedido::statusClass($ped['status']) ?>"><?= \App\Models\Pedido::statusLabel($ped['status']) ?></span></td>
+                <td><a href="/admin/pedidos/<?= (int)$ped['id'] ?>" class="adm-btn adm-btn-secondary adm-btn-sm">Ver</a></td>
+            </tr>
+            <?php endforeach; ?>
+            <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Gráfico + Top Produtos -->
 <div class="adm-grid-2">
     <div class="adm-card">

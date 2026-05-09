@@ -1,0 +1,49 @@
+-- =============================================================================
+-- Iraná Natural — Migração v4.0
+-- Gerenciamento Completo de Clientes
+-- Data: 2026-05-08
+-- =============================================================================
+-- Nenhuma alteração estrutural necessária no banco de dados.
+-- Todos os campos exigidos (nome, cpf, email, telefone, data_nascimento, origem,
+-- ativo, cep, logradouro, numero, complemento, bairro, cidade, estado) já foram
+-- adicionados nas migrações v2.0 e v3.3.
+--
+-- Resumo das alterações desta versão (apenas código):
+--   • app/Models/Cliente.php
+--       + atualizar()                    — atualiza dados cadastrais do cliente
+--       + atualizarPeloAdmin()           — atualiza pelo admin (inclui ativo/senha)
+--       + allComFiltros()               — listagem com busca por nome/email/cpf
+--       + validarDados()                — validação centralizada (estática)
+--       + camposObrigatoriosFaltando()  — retorna lista de campos ausentes
+--       ~ cadastrarPeloAdmin()          — inclui data_nascimento e senha opcionais
+--
+--   • app/Controllers/ClienteController.php
+--       + editarPerfil()               — GET/POST /minha-conta/editar
+--       + processarEdicaoPerfil()      — persiste alterações de perfil do cliente
+--
+--   • app/Controllers/CarrinhoController.php
+--       ~ index()                      — passa cliente + endereco + dadosFaltando
+--
+--   • app/Views/cliente/editar.php     (NOVO)
+--   • app/Views/carrinho/index.php     — seção "Meus Dados" + bloqueio checkout
+--   • app/Views/cliente/painel.php     — link "Editar Dados" na nav
+--   • index.php                        — rotas GET/POST /minha-conta/editar
+--
+--   • admin/Controllers/ClientesAdminController.php  (NOVO)
+--   • admin/Views/clientes/index.php                 (NOVO)
+--   • admin/Views/clientes/ver.php                   (NOVO)
+--   • admin/Views/clientes/form.php                  (NOVO)
+--   • admin/index.php                — rota 'clientes'
+--   • admin/Views/layouts/default.php — sidebar Clientes + masks.js
+--
+--   • admin/Controllers/VendasController.php
+--       ~ criar()                     — salva endereço + data_nascimento no novo cliente
+--   • admin/Views/vendas/form.php     — formulário completo (dados pessoais + endereço)
+--
+--   • assets/js/masks.js              (NOVO) — máscaras CPF, CEP, Telefone
+--   • assets/js/main.js               — removidas máscaras duplicadas
+--   • assets/css/style.css            — .alert--warning + estilos .meus-dados-*
+--   • app/Views/layouts/default.php  — inclui masks.js
+--   • app/Views/cliente/cadastro.php  — data-mask="telefone" no campo telefone
+-- =============================================================================
+SELECT 'migration_v4_0 aplicada — sem alteracoes estruturais no banco' AS status;

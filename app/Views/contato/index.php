@@ -75,7 +75,7 @@
                 <div class="contato-icon" aria-hidden="true">📍</div>
                 <div>
                     <h4>Retirada Pessoal</h4>
-                    <p>Atendemos em Porto Alegre e região. O endereço de retirada é combinado individualmente pelo WhatsApp após a confirmação do pedido.</p>
+                    <p>Atendemos em Canoas/RS e região. O endereço de retirada é combinado individualmente pelo WhatsApp após a confirmação do pedido.</p>
                 </div>
             </div>
         </div>

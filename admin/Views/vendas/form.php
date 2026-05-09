@@ -36,6 +36,125 @@
                 </div>
             </div>
 
+            <!-- Cliente -->
+            <div class="adm-card" style="margin-bottom:1.5rem;background:#FAFAFA">
+                <div class="adm-card-header"><span class="adm-card-title">Cliente (opcional)</span></div>
+                <div class="adm-card-body">
+                    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem">
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="radio" name="tipo_cliente" value="sem" checked onchange="toggleCliente(this.value)"> Sem cliente
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="radio" name="tipo_cliente" value="existente" onchange="toggleCliente(this.value)"> Cliente cadastrado
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="radio" name="tipo_cliente" value="novo" onchange="toggleCliente(this.value)"> Novo cliente
+                        </label>
+                    </div>
+
+                    <!-- Seleção de cliente existente -->
+                    <div id="sec-existente" style="display:none">
+                        <div class="adm-form-group" style="max-width:500px">
+                            <label>Buscar cliente</label>
+                            <input type="text" id="busca-cliente" class="adm-input" placeholder="Digite o nome ou e-mail..." oninput="filtrarClientes()" autocomplete="off">
+                            <select name="cliente_id" id="sel-cliente" size="5"
+                                    style="margin-top:0.5rem;width:100%;border:1px solid #CBD5E0;border-radius:6px;padding:0.25rem">
+                                <?php foreach ($clientes as $c): ?>
+                                <option value="<?= (int)$c['id'] ?>"
+                                        data-search="<?= htmlspecialchars(mb_strtolower($c['nome'] . ' ' . ($c['email'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars($c['nome'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?php if ($c['email']): ?> — <?= htmlspecialchars($c['email'], ENT_QUOTES, 'UTF-8') ?><?php endif; ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php if (empty($clientes)): ?>
+                            <p style="color:#718096;font-size:0.85rem;margin-top:0.5rem">Nenhum cliente cadastrado.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Cadastro de novo cliente -->
+                    <div id="sec-novo" style="display:none">
+                        <p class="adm-alert adm-alert-info" style="margin-bottom:1rem;font-size:.83rem">
+                            Se o e-mail ou CPF já estiver na base, a venda será vinculada ao cadastro existente automaticamente.
+                        </p>
+
+                        <fieldset style="border:1px solid #E2E8F0;border-radius:6px;padding:1rem;margin-bottom:.75rem">
+                            <legend style="padding:0 .4rem;font-size:.8rem;font-weight:700;color:#4A5568">Dados Pessoais</legend>
+                            <div class="adm-form-grid adm-form-grid-2">
+                                <div class="adm-form-group" style="grid-column:1/-1">
+                                    <label>Nome completo *</label>
+                                    <input type="text" name="cliente_novo_nome" placeholder="Nome completo">
+                                </div>
+                            </div>
+                            <div class="adm-form-grid adm-form-grid-3">
+                                <div class="adm-form-group">
+                                    <label>CPF</label>
+                                    <input type="text" name="cliente_novo_cpf" placeholder="000.000.000-00" maxlength="14" data-mask="cpf">
+                                </div>
+                                <div class="adm-form-group">
+                                    <label>E-mail</label>
+                                    <input type="email" name="cliente_novo_email" placeholder="cliente@email.com">
+                                </div>
+                                <div class="adm-form-group">
+                                    <label>Telefone</label>
+                                    <input type="tel" name="cliente_novo_telefone" placeholder="(00) 00000-0000" data-mask="telefone">
+                                </div>
+                            </div>
+                            <div class="adm-form-grid adm-form-grid-3">
+                                <div class="adm-form-group">
+                                    <label>Data de Nascimento</label>
+                                    <input type="date" name="cliente_novo_data_nascimento" max="<?= date('Y-m-d') ?>">
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset style="border:1px solid #E2E8F0;border-radius:6px;padding:1rem">
+                            <legend style="padding:0 .4rem;font-size:.8rem;font-weight:700;color:#4A5568">Endereço (opcional)</legend>
+                            <div class="adm-form-grid adm-form-grid-3">
+                                <div class="adm-form-group">
+                                    <label>CEP</label>
+                                    <input type="text" name="cliente_novo_cep" placeholder="00000-000" maxlength="9" data-mask="cep">
+                                </div>
+                                <div class="adm-form-group" style="grid-column:span 2">
+                                    <label>Logradouro</label>
+                                    <input type="text" name="cliente_novo_logradouro" placeholder="Rua / Avenida">
+                                </div>
+                            </div>
+                            <div class="adm-form-grid adm-form-grid-3">
+                                <div class="adm-form-group">
+                                    <label>Número</label>
+                                    <input type="text" name="cliente_novo_numero" placeholder="Ex: 123">
+                                </div>
+                                <div class="adm-form-group">
+                                    <label>Complemento</label>
+                                    <input type="text" name="cliente_novo_complemento" placeholder="Apto, Bloco…">
+                                </div>
+                                <div class="adm-form-group">
+                                    <label>Bairro</label>
+                                    <input type="text" name="cliente_novo_bairro" placeholder="Bairro">
+                                </div>
+                            </div>
+                            <div class="adm-form-grid adm-form-grid-3">
+                                <div class="adm-form-group" style="grid-column:span 2">
+                                    <label>Cidade</label>
+                                    <input type="text" name="cliente_novo_cidade" placeholder="Cidade">
+                                </div>
+                                <div class="adm-form-group">
+                                    <label>Estado</label>
+                                    <select name="cliente_novo_estado">
+                                        <option value="">UF</option>
+                                        <?php foreach (['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as $uf): ?>
+                                        <option value="<?= $uf ?>"><?= $uf ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+            </div>
+
             <!-- Itens da venda -->
             <div class="adm-card" style="margin-bottom:1.5rem">
                 <div class="adm-card-header">
@@ -146,4 +265,19 @@ function calcTotal() {
 
 // Linha inicial
 addLinha();
+
+// Cliente section
+function toggleCliente(tipo) {
+    document.getElementById('sec-existente').style.display = tipo === 'existente' ? '' : 'none';
+    document.getElementById('sec-novo').style.display      = tipo === 'novo'      ? '' : 'none';
+    if (tipo !== 'existente') document.getElementById('sel-cliente').value = '';
+}
+
+function filtrarClientes() {
+    const q    = document.getElementById('busca-cliente').value.toLowerCase();
+    const opts = document.getElementById('sel-cliente').options;
+    for (let i = 0; i < opts.length; i++) {
+        opts[i].hidden = q !== '' && !opts[i].dataset.search.includes(q);
+    }
+}
 </script>

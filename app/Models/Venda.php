@@ -10,9 +10,11 @@ class Venda extends Model
     public function allComDetalhes(int $limit = 200): array
     {
         return $this->query(
-            "SELECT v.*, COUNT(vi.id) as qtd_itens
+            "SELECT v.*, COUNT(vi.id) as qtd_itens,
+                    COALESCE(c.nome, v.cliente_nome) as nome_cliente
              FROM vendas v
              LEFT JOIN vendas_itens vi ON vi.venda_id = v.id
+             LEFT JOIN clientes c ON c.id = v.cliente_id
              GROUP BY v.id
              ORDER BY v.data_venda DESC, v.criado_em DESC
              LIMIT ?",
@@ -31,12 +33,25 @@ class Venda extends Model
         );
     }
 
-    // $itens = [['produto_id'=>X,'quantidade'=>Y,'preco_unitario'=>Z],...]
-    public function registrar(array $cabecalho, array $itens): int
+    /**
+     * Registra uma venda com baixa de estoque e movimentação de produtos.
+     *
+     * $cabecalho aceita opcionalmente:
+     *   - 'pedido_id' (int) para vincular a um pedido online
+     *
+     * $comTransacao = false quando o chamador já gerencia a transação (ex: webhook).
+     * O fluxo administrativo não altera — usa o padrão true.
+     *
+     * @param  array $cabecalho  Dados do cabeçalho da venda
+     * @param  array $itens      [['produto_id','quantidade','preco_unitario'],...]
+     * @param  bool  $comTransacao  Gerenciar BEGIN/COMMIT/ROLLBACK internamente
+     * @return int   ID da venda criada
+     */
+    public function registrar(array $cabecalho, array $itens, bool $comTransacao = true): int
     {
         $produtoModel = new Produto();
 
-        // Valida estoque antes de qualquer operação
+        // Valida estoque antes de qualquer escrita
         foreach ($itens as $item) {
             $p = $produtoModel->findById((int)$item['produto_id']);
             if (!$p) throw new \Exception("Produto #{$item['produto_id']} não encontrado.");
@@ -45,7 +60,7 @@ class Venda extends Model
             }
         }
 
-        $this->beginTransaction();
+        if ($comTransacao) $this->beginTransaction();
         try {
             $subtotal   = 0.0;
             $lucroTotal = 0.0;
@@ -68,8 +83,14 @@ class Venda extends Model
 
             $valorFinal = max(0, $subtotal - $desconto);
 
-            // Cria cabeçalho da venda
-            $vendaId = $this->insert([
+            $clienteId   = isset($cabecalho['cliente_id']) && (int)$cabecalho['cliente_id'] > 0
+                            ? (int)$cabecalho['cliente_id'] : null;
+            $clienteNome = !empty($cabecalho['cliente_nome']) ? trim($cabecalho['cliente_nome']) : null;
+
+            // Cabeçalho da venda — inclui pedido_id se vier do webhook
+            $insertVenda = [
+                'cliente_id'      => $clienteId,
+                'cliente_nome'    => $clienteNome,
                 'data_venda'      => $cabecalho['data_venda'],
                 'forma_pagamento' => $cabecalho['forma_pagamento'],
                 'subtotal'        => round($subtotal, 2),
@@ -77,9 +98,14 @@ class Venda extends Model
                 'valor_final'     => round($valorFinal, 2),
                 'lucro_total'     => round($lucroTotal, 2),
                 'observacoes'     => $cabecalho['observacoes'] ?? '',
-            ]);
+            ];
+            if (!empty($cabecalho['pedido_id'])) {
+                $insertVenda['pedido_id'] = (int)$cabecalho['pedido_id'];
+            }
 
-            // Insere itens e debita estoque
+            $vendaId = $this->insert($insertVenda);
+
+            // Insere itens, debita estoque e registra movimentação
             foreach ($linhas as $linha) {
                 $p = $linha['produto'];
 
@@ -99,10 +125,10 @@ class Venda extends Model
                 );
             }
 
-            $this->commit();
+            if ($comTransacao) $this->commit();
             return $vendaId;
         } catch (\Throwable $e) {
-            $this->rollback();
+            if ($comTransacao) $this->rollback();
             throw $e;
         }
     }

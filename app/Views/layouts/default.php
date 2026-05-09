@@ -59,6 +59,35 @@ $_active  = function(string $seg) use ($_navPath): string {
             <li><a href="<?= APP_URL ?>/como-comprar" class="nav-link<?= $_active('/como-comprar') ?>">Como Comprar</a></li>
             <li><a href="<?= APP_URL ?>/contato" class="nav-link<?= $_active('/contato') ?>">Contato</a></li>
         </ul>
+
+        <div class="nav-actions">
+            <!-- Ícone carrinho -->
+            <a href="<?= APP_URL ?>/carrinho" class="nav-carrinho<?= str_starts_with($_navPath, '/carrinho') || str_starts_with($_navPath, '/checkout') ? ' active' : '' ?>" aria-label="Carrinho de compras" id="nav-carrinho-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22">
+                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <span class="nav-carrinho__badge" id="carrinho-badge" style="display:none">0</span>
+            </a>
+
+            <!-- Conta do cliente -->
+            <?php if (\App\Core\Session::has('cliente_id')): ?>
+            <div class="nav-conta nav-conta--logado" id="nav-conta">
+                <button class="nav-conta__btn" aria-label="Minha conta" id="conta-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span class="nav-conta__nome"><?= htmlspecialchars(explode(' ', \App\Core\Session::get('cliente_nome', ''))[0], ENT_QUOTES, 'UTF-8') ?></span>
+                </button>
+                <div class="nav-conta__dropdown" id="conta-dropdown">
+                    <a href="<?= APP_URL ?>/minha-conta">Minha Conta</a>
+                    <a href="<?= APP_URL ?>/minha-conta/logout">Sair</a>
+                </div>
+            </div>
+            <?php else: ?>
+            <a href="<?= APP_URL ?>/minha-conta/login" class="nav-conta__link" aria-label="Entrar na conta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="22" height="22"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </a>
+            <?php endif; ?>
+        </div>
     </nav>
 </header>
 
@@ -71,7 +100,8 @@ $_active  = function(string $seg) use ($_navPath): string {
 <footer class="site-footer">
     <div class="container footer-grid">
         <div class="footer-brand">
-            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="<?= APP_NAME ?>" class="footer-logo" onerror="this.style.display='none'">
+            <img src="<?= APP_URL ?>/assets/images/logo.png" alt="<?= APP_NAME ?>" class="footer-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <span class="footer-logo-text" style="display:none"><?= APP_NAME ?></span>
             <p class="footer-slogan"><?= APP_SLOGAN ?></p>
             <p class="footer-desc">Produtos naturais artesanais feitos com amor, intenção e respeito pela natureza.</p>
         </div>
@@ -126,6 +156,7 @@ $_active  = function(string $seg) use ($_navPath): string {
     </svg>
 </a>
 
+<script src="<?= APP_URL ?>/assets/js/masks.js"></script>
 <script src="<?= APP_URL ?>/assets/js/main.js"></script>
 </body>
 </html>

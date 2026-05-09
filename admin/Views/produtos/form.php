@@ -226,11 +226,50 @@ $pageScripts = '<script src="https://unpkg.com/easymde/dist/easymde.min.js"></sc
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     SEÇÃO 5 — MÍDIA E PUBLICAÇÃO
+     SEÇÃO 5 — LOGÍSTICA (Dimensões para cálculo de frete)
 ═══════════════════════════════════════════════════════ -->
 <div class="adm-card" style="margin-bottom:1.5rem">
     <div class="adm-card-header">
-        <span class="adm-card-title">5. Mídia e Publicação</span>
+        <span class="adm-card-title">5. Logística</span>
+    </div>
+    <div class="adm-card-body">
+        <div class="adm-hint" style="margin-bottom:1rem">Dimensões usadas para calcular o frete via Melhor Envio. Informe as medidas da embalagem pronta para envio.</div>
+        <div class="adm-form-grid adm-form-grid-2">
+            <div class="adm-form-group">
+                <label>Peso (kg)</label>
+                <input type="number" name="peso" step="0.001" min="0.001"
+                       value="<?= number_format((float)($produto['peso'] ?? 0.1), 3, '.', '') ?>"
+                       placeholder="0.300">
+                <div class="adm-hint">Ex: 0.300 = 300g</div>
+            </div>
+            <div class="adm-form-group">
+                <label>Altura (cm)</label>
+                <input type="number" name="altura" min="1"
+                       value="<?= (int)($produto['altura'] ?? 10) ?>"
+                       placeholder="10">
+            </div>
+            <div class="adm-form-group">
+                <label>Largura (cm)</label>
+                <input type="number" name="largura" min="1"
+                       value="<?= (int)($produto['largura'] ?? 10) ?>"
+                       placeholder="10">
+            </div>
+            <div class="adm-form-group">
+                <label>Comprimento (cm)</label>
+                <input type="number" name="comprimento" min="1"
+                       value="<?= (int)($produto['comprimento'] ?? 15) ?>"
+                       placeholder="15">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SEÇÃO 6 — MÍDIA E PUBLICAÇÃO
+═══════════════════════════════════════════════════════ -->
+<div class="adm-card" style="margin-bottom:1.5rem">
+    <div class="adm-card-header">
+        <span class="adm-card-title">6. Mídia e Publicação</span>
     </div>
     <div class="adm-card-body">
 
