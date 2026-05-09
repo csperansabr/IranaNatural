@@ -39,6 +39,17 @@
                 <span class="adm-nav-icon">💬</span> Depoimentos
             </a>
 
+            <div class="adm-nav-section">E-commerce</div>
+            <a href="/admin/pedidos" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/pedidos') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">🛍️</span> Pedidos Online
+            </a>
+            <a href="/admin/clientes" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/clientes') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">👥</span> Clientes
+            </a>
+            <a href="/admin/webhook_logs" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/webhook_logs') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">🪝</span> Webhook Logs
+            </a>
+
             <div class="adm-nav-section">Operação</div>
             <a href="/admin/insumos" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/insumos') ? 'active' : '' ?>">
                 <span class="adm-nav-icon">🌾</span> Insumos
@@ -62,6 +73,9 @@
             </a>
             <a href="/admin/importacao/historico" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/importacao/historico') ? 'active' : '' ?>">
                 <span class="adm-nav-icon">📋</span> Histórico
+            </a>
+            <a href="/admin/configuracoes" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/configuracoes') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">⚙️</span> Configurações
             </a>
         </nav>
 
@@ -95,6 +109,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="<?= APP_URL ?>/assets/js/masks.js"></script>
 <script>
 // Sidebar mobile toggle
 document.getElementById('adm-sidebar');

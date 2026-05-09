@@ -148,6 +148,8 @@ body { font-family: 'Lato', sans-serif; font-size: 14px; color: var(--adm-texto)
     background: var(--adm-cinza-claro);
 }
 .adm-card-title { font-size: 0.9rem; font-weight: 700; color: var(--adm-texto); }
+.adm-card-header h2,
+.adm-card-header h3 { font-size: 0.9rem; font-weight: 700; color: var(--adm-texto); margin: 0; }
 .adm-card-body { padding: 1.5rem; }
 
 /* ---- Stats (Dashboard) ---- */
@@ -321,4 +323,147 @@ body { font-family: 'Lato', sans-serif; font-size: 14px; color: var(--adm-texto)
 }
 @media (max-width: 480px) {
     .adm-stats { grid-template-columns: 1fr; }
+}
+
+/* ---- Labels e Inputs standalone (fora de .adm-form-group) ---- */
+.adm-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--adm-texto);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.adm-input {
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: 1.5px solid var(--adm-cinza-borda);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    color: var(--adm-texto);
+    background: var(--adm-branco);
+    transition: border-color 0.2s;
+    outline: none;
+}
+.adm-input:focus { border-color: var(--adm-verde); box-shadow: 0 0 0 3px rgba(44,95,46,0.1); }
+.adm-input[type="date"] { min-width: 140px; }
+
+/* ---- Filtro de listagem ---- */
+.adm-filter-form { }
+.adm-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    padding: 1.25rem 1.5rem;
+}
+.adm-filter-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 140px;
+}
+.adm-filter-group--actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    padding-bottom: 0;
+}
+
+/* ---- Status de pedido ---- */
+.adm-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.adm-status--pendente   { background: #FFFBEB; color: #7B341E; border: 1px solid #FEEBC8; }
+.adm-status--pago       { background: #EBF8FF; color: #2B6CB0; border: 1px solid #BEE3F8; }
+.adm-status--separando  { background: #FAF5FF; color: #6B46C1; border: 1px solid #E9D8FD; }
+.adm-status--enviado    { background: #E6FFFA; color: #276749; border: 1px solid #9AE6B4; }
+.adm-status--entregue   { background: #F0FFF4; color: #276749; border: 1px solid #C6F6D5; }
+.adm-status--cancelado  { background: #FFF5F5; color: #9B2C2C; border: 1px solid #FED7D7; }
+
+/* ---- Alertas com modificador duplo-traço (BEM) ---- */
+.adm-alert--success { background: #F0FFF4; color: #276749; border: 1px solid #C6F6D5; }
+.adm-alert--error   { background: #FFF5F5; color: #9B2C2C; border: 1px solid #FED7D7; }
+
+/* ---- Estado vazio de tabela ---- */
+.adm-empty {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--adm-texto-medio);
+    font-size: 0.9rem;
+}
+
+/* ---- Botão bloco (largura total) ---- */
+.adm-btn-block { width: 100%; justify-content: center; }
+
+/* ---- Layout de detalhe do pedido (2 colunas) ---- */
+.adm-pedido-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: start;
+}
+.adm-pedido-main  { min-width: 0; }
+.adm-pedido-sidebar { min-width: 0; }
+
+/* Meta-dados do pedido (data / pagamento) */
+.adm-pedido-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+}
+.adm-pedido-meta > div { display: flex; flex-direction: column; gap: 0.25rem; }
+.adm-pedido-meta label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--adm-texto-medio);
+}
+.adm-pedido-meta span { font-size: 0.9rem; color: var(--adm-texto); }
+
+/* Dados do cliente no sidebar */
+.adm-pedido-cliente {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.adm-pedido-cliente > div { display: flex; flex-direction: column; gap: 0.2rem; }
+.adm-pedido-cliente label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--adm-texto-medio);
+}
+.adm-pedido-cliente span,
+.adm-pedido-cliente a {
+    font-size: 0.9rem;
+    color: var(--adm-texto);
+    text-decoration: none;
+    word-break: break-all;
+}
+.adm-pedido-cliente a:hover { color: var(--adm-verde); text-decoration: underline; }
+
+/* Responsivo — detalhe do pedido */
+@media (max-width: 900px) {
+    .adm-pedido-layout { grid-template-columns: 1fr; }
+    .adm-pedido-meta   { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+    .adm-filter-row    { flex-direction: column; gap: 0.75rem; }
+    .adm-filter-group  { min-width: unset; }
+    .adm-pedido-meta   { grid-template-columns: 1fr; }
 }

@@ -5,6 +5,8 @@ define('ROOT', dirname(__DIR__));
 
 require_once ROOT . '/config/database.php';
 require_once ROOT . '/config/app.php';
+require_once ROOT . '/config/payment.php';
+require_once ROOT . '/config/frete.php';
 
 // Autoloader
 spl_autoload_register(function (string $class): void {
@@ -58,10 +60,14 @@ $map = [
     'produtos'    => 'Admin\\Controllers\\ProdutosAdminController',
     'producao'    => 'Admin\\Controllers\\ProducaoController',
     'vendas'      => 'Admin\\Controllers\\VendasController',
+    'clientes'    => 'Admin\\Controllers\\ClientesAdminController',
     'estoque'     => 'Admin\\Controllers\\EstoqueController',
     'banners'     => 'Admin\\Controllers\\BannersController',
     'depoimentos' => 'Admin\\Controllers\\DepoimentosController',
     'importacao'  => 'Admin\\Controllers\\ImportacaoController',
+    'pedidos'       => 'Admin\\Controllers\\PedidosAdminController',
+    'webhook_logs'  => 'Admin\\Controllers\\WebhookLogsController',
+    'configuracoes' => 'Admin\\Controllers\\ConfiguracoesController',
 ];
 
 $class = $map[$module] ?? null;
@@ -88,6 +94,11 @@ if ($module === 'importacao') {
     $ctrl->form($entidade); exit;
 }
 // ─────────────────────────────────────────────────────────────────
+
+// /admin/pedidos/status (AJAX POST)
+if ($module === 'pedidos' && $seg1 === 'status' && $method === 'POST') {
+    $ctrl->atualizarStatus(); exit;
+}
 
 // /admin/ ou /admin/dashboard
 if ($seg1 === null || $seg1 === '') {

@@ -32,7 +32,7 @@ class ProdutosAdminController extends AdminController
 
     public function editar(int $id): void
     {
-        $produto = $this->model->findById($id);
+        $produto = $this->model->findByIdAdmin($id);
         if (!$produto) { $this->redirect('/admin/produtos'); return; }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') { $this->salvar($id); return; }
         $categorias = (new Categoria())->allAtivas();
@@ -71,6 +71,11 @@ class ProdutosAdminController extends AdminController
             'margem_desejada'    => (float)($_POST['margem_desejada'] ?? 0),
             'estoque_minimo'     => (int)($_POST['estoque_minimo'] ?? 0),
             'ativo'              => isset($_POST['ativo']) ? 1 : 0,
+            // Logística (frete)
+            'peso'               => max(0.001, (float)($_POST['peso']        ?? 0.1)),
+            'altura'             => max(1,     (int)($_POST['altura']        ?? 10)),
+            'largura'            => max(1,     (int)($_POST['largura']       ?? 10)),
+            'comprimento'        => max(1,     (int)($_POST['comprimento']   ?? 15)),
         ];
 
         if ($id) {
@@ -151,7 +156,7 @@ class ProdutosAdminController extends AdminController
 
     public function ficha(int $id): void
     {
-        $produto = $this->model->findById($id);
+        $produto = $this->model->findByIdAdmin($id);
         if (!$produto) { $this->redirect('/admin/produtos'); return; }
         $ficha   = (new FichaTecnica())->dosProduto($id);
         $insumos = (new Insumo())->allAtivos();

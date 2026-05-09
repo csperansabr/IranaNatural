@@ -12,15 +12,22 @@
     <div class="adm-table-wrap">
         <table class="adm-table">
             <thead>
-                <tr><th>Data</th><th>Pagamento</th><th>Itens</th><th>Subtotal</th><th>Desconto</th><th>Total</th><th>Lucro</th></tr>
+                <tr><th>Data</th><th>Cliente</th><th>Pagamento</th><th>Itens</th><th>Subtotal</th><th>Desconto</th><th>Total</th><th>Lucro</th></tr>
             </thead>
             <tbody>
             <?php if (empty($vendas)): ?>
-            <tr><td colspan="7" style="text-align:center;padding:2rem;color:#718096">Nenhuma venda registrada.</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:2rem;color:#718096">Nenhuma venda registrada.</td></tr>
             <?php else: ?>
             <?php foreach ($vendas as $v): ?>
             <tr>
                 <td><?= Helper::date($v['data_venda']) ?></td>
+                <td style="max-width:160px">
+                    <?php if (!empty($v['nome_cliente'])): ?>
+                    <span style="font-size:0.85rem"><?= htmlspecialchars($v['nome_cliente'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php else: ?>
+                    <span style="color:#aaa">—</span>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <span class="adm-badge adm-badge-gray"><?= strtoupper($v['forma_pagamento']) ?></span>
                 </td>

@@ -39,6 +39,18 @@ class Produto extends Model
         );
     }
 
+    // Admin panel: single product with category data (usado no formulário de edição)
+    public function findByIdAdmin(int $id): ?array
+    {
+        return $this->queryOne(
+            "SELECT p.*, c.nome as categoria_nome, c.slug as categoria_slug
+             FROM produtos p
+             JOIN categorias c ON c.id = p.categoria_id
+             WHERE p.id = ?",
+            [$id]
+        );
+    }
+
     public function findBySlug(string $slug): ?array
     {
         return $this->queryOne(
@@ -198,6 +210,14 @@ class Produto extends Model
              ORDER BY total_vendido DESC
              LIMIT ?",
             [$limit]
+        );
+    }
+
+    public function debitarEstoque(int $produtoId, int $quantidade): void
+    {
+        $this->exec(
+            "UPDATE produtos SET estoque_atual = GREATEST(0, estoque_atual - ?) WHERE id = ?",
+            [$quantidade, $produtoId]
         );
     }
 }
