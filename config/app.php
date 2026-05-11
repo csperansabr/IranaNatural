@@ -20,4 +20,10 @@ define('ADMIN_SESSION',  'iran_admin_user');
 define('INSTAGRAM_URL',  'https://instagram.com/irana.natural');
 define('TIMEZONE',       'America/Sao_Paulo');
 
+// ── Política de sessão do cliente (site público) ────────────────
+// Tempo máximo de inatividade (sem nenhuma requisição autenticada)
+define('SESSION_CLIENTE_INATIVIDADE', 1800);   // 30 minutos
+// Tempo máximo absoluto da sessão independentemente da atividade
+define('SESSION_CLIENTE_ABSOLUTA',   28800);   // 8 horas
+
 date_default_timezone_set(TIMEZONE);

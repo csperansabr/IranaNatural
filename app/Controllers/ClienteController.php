@@ -75,6 +75,9 @@ class ClienteController extends Controller
         Session::set('cliente_nome',  $cliente['nome']);
         Session::set('cliente_email', $cliente['email']);
 
+        // Inicializar timestamps de controle de sessão (expiração por inatividade/absoluta)
+        Session::iniciarSessaoCliente();
+
         // Migrar/mergir carrinho anônimo → cliente autenticado
         (new Carrinho())->mergeOuMigrar($sessaoAnterior, session_id(), $cliente['id']);
 
@@ -200,6 +203,9 @@ class ClienteController extends Controller
         Session::set('cliente_id',    $clienteId);
         Session::set('cliente_nome',  $data['nome']);
         Session::set('cliente_email', $data['email']);
+
+        // Inicializar timestamps de controle de sessão (expiração por inatividade/absoluta)
+        Session::iniciarSessaoCliente();
 
         // Migrar carrinho anônimo → nova conta (sem carrinho anterior, é simples migração)
         (new Carrinho())->mergeOuMigrar($sessaoAnterior, session_id(), $clienteId);
@@ -513,7 +519,10 @@ class ClienteController extends Controller
     {
         if (!Session::has('cliente_id')) {
             $destino = $redirect ?? APP_URL . '/minha-conta';
-            Session::flash('flash_erro', 'Faça login para continuar.');
+            // Preserva mensagem de expiração definida por Session::_encerrarSessaoCliente()
+            if (!Session::hasFlash('flash_erro')) {
+                Session::flash('flash_erro', 'Faça login para continuar.');
+            }
             header('Location: ' . APP_URL . '/minha-conta/login?redirect=' . urlencode($destino));
             exit;
         }
