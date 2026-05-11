@@ -168,7 +168,10 @@ class Cliente extends Model
 
     public function alterarSenha(int $id, string $novaSenha): bool
     {
-        return $this->update($id, ['senha' => password_hash($novaSenha, PASSWORD_BCRYPT)]);
+        return $this->update($id, [
+            'senha'             => password_hash($novaSenha, PASSWORD_BCRYPT),
+            'senha_alterada_em' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     public function getEndereco(int $clienteId): ?array

@@ -62,6 +62,8 @@ $router->get('minha-conta/nova-senha/{token}', 'ClienteController', 'novaSenha')
 $router->post('minha-conta/nova-senha/{token}','ClienteController', 'novaSenha');
 $router->get('minha-conta/editar',             'ClienteController', 'editarPerfil');
 $router->post('minha-conta/editar',            'ClienteController', 'editarPerfil');
+$router->get('minha-conta/alterar-senha',      'ClienteController', 'alterarSenha');
+$router->post('minha-conta/alterar-senha',     'ClienteController', 'alterarSenha');
 
 // ── Carrinho ────────────────────────────────────────────────────
 $router->get('carrinho',              'CarrinhoController', 'index');

@@ -152,7 +152,7 @@
             </form>
 
             <div class="auth-card__footer">
-                <p>Deseja alterar sua senha? <a href="<?= APP_URL ?>/minha-conta/recuperar-senha" class="link-verde">Clique aqui →</a></p>
+                <p>Deseja alterar sua senha? <a href="<?= APP_URL ?>/minha-conta/alterar-senha" class="link-verde">Alterar senha →</a></p>
             </div>
         </div>
 

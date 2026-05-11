@@ -317,6 +317,88 @@ class ClienteController extends Controller
         $this->render('cliente/painel', compact('meta', 'cliente', 'endereco', 'pedidos', 'flash', 'erro'));
     }
 
+    // ── GET/POST /minha-conta/alterar-senha ─────────────────────
+    public function alterarSenha(): void
+    {
+        self::requerLogin();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->processarAlteracaoSenha();
+            return;
+        }
+
+        $flash = Session::flash('flash_ok');
+        $erro  = Session::flash('flash_erro');
+        $csrf  = Session::csrfToken();
+
+        $meta = [
+            'title'       => 'Alterar Senha — ' . APP_NAME,
+            'description' => 'Altere a senha da sua conta ' . APP_NAME . '.',
+            'url'         => APP_URL . '/minha-conta/alterar-senha',
+        ];
+        $this->render('cliente/alterar-senha', compact('meta', 'flash', 'erro', 'csrf'));
+    }
+
+    private function processarAlteracaoSenha(): void
+    {
+        if (!Session::verifyCsrf($_POST['_csrf'] ?? '')) {
+            Session::flash('flash_erro', 'Erro de segurança. Recarregue e tente novamente.');
+            $this->redirect(APP_URL . '/minha-conta/alterar-senha');
+            return;
+        }
+
+        $clienteId  = (int)Session::get('cliente_id');
+        $email      = (string)Session::get('cliente_email');
+        $senhaAtual = $_POST['senha_atual']      ?? '';
+        $novaSenha  = $_POST['nova_senha']        ?? '';
+        $confirma   = $_POST['confirmar_senha']   ?? '';
+
+        // Rate limiting por sessão — máx 5 tentativas com senha incorreta
+        $tentativas = (int)Session::get('_senha_tentativas', 0);
+        if ($tentativas >= 5) {
+            Session::flash('flash_erro', 'Muitas tentativas incorretas. Saia e entre novamente, ou use "Esqueci minha senha".');
+            $this->redirect(APP_URL . '/minha-conta/alterar-senha');
+            return;
+        }
+
+        // Verificar identidade: confirmar senha atual via autenticação real
+        $cliente = $this->clienteModel->autenticar($email, $senhaAtual);
+        if (!$cliente || (int)$cliente['id'] !== $clienteId) {
+            Session::set('_senha_tentativas', $tentativas + 1);
+            Session::flash('flash_erro', 'Senha atual incorreta.');
+            $this->redirect(APP_URL . '/minha-conta/alterar-senha');
+            return;
+        }
+
+        // Validações da nova senha
+        $erros = [];
+        if (mb_strlen($novaSenha) < 8) {
+            $erros[] = 'A nova senha deve ter ao menos 8 caracteres.';
+        }
+        if ($novaSenha !== $confirma) {
+            $erros[] = 'A confirmação de senha não coincide.';
+        }
+        if (!$erros && password_verify($novaSenha, $cliente['senha'])) {
+            $erros[] = 'A nova senha não pode ser igual à senha atual.';
+        }
+
+        if ($erros) {
+            Session::flash('flash_erro', implode(' ', $erros));
+            $this->redirect(APP_URL . '/minha-conta/alterar-senha');
+            return;
+        }
+
+        // Alterar senha + gravar timestamp de auditoria
+        $this->clienteModel->alterarSenha($clienteId, $novaSenha);
+
+        // Limpar contador de tentativas e regenerar ID de sessão
+        Session::delete('_senha_tentativas');
+        session_regenerate_id(true);
+
+        Session::flash('flash_ok', 'Senha alterada com sucesso!');
+        $this->redirect(APP_URL . '/minha-conta');
+    }
+
     // ── GET/POST /minha-conta/recuperar-senha ────────────────────
     public function recuperarSenha(): void
     {
