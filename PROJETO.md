@@ -1,7 +1,7 @@
 # Iraná Natural — Documentação Técnica do Projeto
 
 > **Última atualização:** 2026-05-11
-> **Versão do sistema:** 6.5
+> **Versão do sistema:** 6.6
 > **Status:** Desenvolvimento ativo — pré-deploy de produção
 
 ---
@@ -302,9 +302,17 @@ INFINITEPAY_WEBHOOK_SECRET=<256bits-hex>  # Gere com: php tools/gerar-webhook-se
 - Constante `ADMIN_SESSION` como chave da sessão
 
 ### Clientes (site público)
-- Sessão PHP para carrinho e dados do cliente
+- Sessão PHP para carrinho e dados do cliente; cookie `iran_sess` (HttpOnly, SameSite=Lax)
 - CPF + e-mail + telefone coletados no checkout
 - Opção de cadastro para salvar pedidos (modelo `Cliente`)
+- **Expiração automática de sessão (v6.6)**:
+  - Inatividade: `SESSION_CLIENTE_INATIVIDADE` = 1800 s (30 min) — renovado a cada requisição
+  - Absoluta: `SESSION_CLIENTE_ABSOLUTA` = 28800 s (8 h) — independente de atividade
+  - Validação application-level em `Session::start()` a cada requisição (não depende de GC do servidor)
+  - `Session::iniciarSessaoCliente()` grava `_cliente_criado_em` e `_cliente_ativo_em` no login/cadastro
+  - `Session::_encerrarSessaoCliente()` remove auth, preserva carrinho + CSRF, define flash explicativo
+  - Sessões legadas (criadas antes do deploy) recebem contadores zerados na primeira requisição
+  - `requerLogin()` preserva mensagem de expiração via `Session::hasFlash()` (não sobrescreve)
 
 ### Webhook (InfinitePay)
 - Secret de 256 bits (64 hex) na URL: `POST /webhook/infinitepay/{secret}`
@@ -329,16 +337,19 @@ INFINITEPAY_WEBHOOK_SECRET=<256bits-hex>  # Gere com: php tools/gerar-webhook-se
 - [x] `robots.txt` bloqueia `/admin/`, `/config/`, `/app/`
 - [x] Webhook secret com `hash_equals()` (prevenção de timing attack)
 - [x] Rate limiting de webhook por IP
-- [x] `session_regenerate_id()` após login
+- [x] `session_regenerate_id()` após login e após alteração de senha
+- [x] Expiração de sessão por inatividade (30 min) e absoluta (8 h) — application-level
+- [x] Logs de login, logout e expiração automática (sem PII)
 - [x] Erros de banco não expostos ao usuário (logados em error_log)
 
 ### Pendente / Recomendado
 - [ ] Habilitar HTTPS redirect no `.htaccess` antes do deploy
 - [ ] Headers de segurança HTTP (CSP, HSTS, X-Frame-Options, X-Content-Type)
-- [ ] Configurar `session.cookie_secure`, `session.cookie_httponly`, `session.cookie_samesite=Strict` no php.ini/cPanel
+- [ ] Configurar `session.cookie_secure=1` no php.ini/cPanel (requer HTTPS ativo)
 - [ ] Rotacionar webhook secret após qualquer commit em repositório remoto
 - [ ] Implementar Content Security Policy para bloquear XSS
 - [ ] Substituir Google Fonts por hospedagem local (elimina dependência CDN externa e melhora privacidade)
+- [ ] Expiração de sessão do admin (atualmente sem timeout automático)
 
 ---
 
@@ -448,12 +459,13 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 
 ## 14. Status Atual do Desenvolvimento
 
-**Versão:** 6.5 — Persistência de carrinho após login + alteração de senha pelo cliente
+**Versão:** 6.6 — Gerenciamento seguro de sessão com expiração automática por inatividade e tempo absoluto
 
 ### Funcionalidades implementadas e operacionais
 - [x] Catálogo de produtos com categorias e galeria de imagens
 - [x] Carrinho de compras (sessão + banco) com persistência após login/cadastro (v6.5)
 - [x] Merge inteligente de carrinhos anônimo + conta ao autenticar (v6.5)
+- [x] Expiração automática de sessão: 30 min inatividade + 8 h absoluto; mensagem amigável ao expirar (v6.6)
 - [x] Checkout completo (endereço, frete, pagamento)
 - [x] Integração InfinitePay Checkout (link de pagamento)
 - [x] Webhook InfinitePay com idempotência e transação atômica
@@ -635,5 +647,5 @@ git push origin --force --all
 
 ---
 
-*Documento atualizado em 2026-05-11 — reflete versão 6.5 (persistência de carrinho + alteração de senha pelo cliente).*
+*Documento atualizado em 2026-05-11 — reflete versão 6.6 (expiração automática de sessão).*
 *Próxima revisão recomendada: antes de cada deploy em produção.*
