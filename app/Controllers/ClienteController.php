@@ -67,14 +67,16 @@ class ClienteController extends Controller
             return;
         }
 
+        // Capturar session ID ANTES de regenerar (carrinho anônimo usa o ID antigo)
+        $sessaoAnterior = session_id();
+
         session_regenerate_id(true);
         Session::set('cliente_id',    $cliente['id']);
         Session::set('cliente_nome',  $cliente['nome']);
         Session::set('cliente_email', $cliente['email']);
 
-        // Migrar carrinho anônimo para o cliente logado
-        $sessaoId = session_id();
-        (new Carrinho())->vincularCliente($sessaoId, $cliente['id']);
+        // Migrar/mergir carrinho anônimo → cliente autenticado
+        (new Carrinho())->mergeOuMigrar($sessaoAnterior, session_id(), $cliente['id']);
 
         $redirect = trim($_POST['redirect'] ?? '');
         $this->redirect($redirect ?: APP_URL . '/minha-conta');
@@ -191,13 +193,16 @@ class ClienteController extends Controller
         $clienteId = $this->clienteModel->cadastrar($data);
         $this->clienteModel->salvarEndereco($clienteId, $data);
 
+        // Capturar session ID ANTES de regenerar (carrinho anônimo usa o ID antigo)
+        $sessaoAnterior = session_id();
+
         session_regenerate_id(true);
         Session::set('cliente_id',    $clienteId);
         Session::set('cliente_nome',  $data['nome']);
         Session::set('cliente_email', $data['email']);
 
-        // Migrar carrinho anônimo
-        (new Carrinho())->vincularCliente(session_id(), $clienteId);
+        // Migrar carrinho anônimo → nova conta (sem carrinho anterior, é simples migração)
+        (new Carrinho())->mergeOuMigrar($sessaoAnterior, session_id(), $clienteId);
 
         Session::flash('flash_ok', 'Bem-vinda, ' . explode(' ', $data['nome'])[0] . '! Sua conta foi criada com sucesso.');
         $this->redirect(APP_URL . '/minha-conta');
