@@ -1,7 +1,7 @@
 # Iraná Natural — Documentação Técnica do Projeto
 
 > **Última atualização:** 2026-05-11
-> **Versão do sistema:** 6.3
+> **Versão do sistema:** 6.5
 > **Status:** Desenvolvimento ativo — pré-deploy de produção
 
 ---
@@ -135,6 +135,7 @@ IranaNatural/
 │   ├── seed.sql                  # Dados iniciais de demonstração
 │   ├── produtos.sql              # Catálogo de produtos de referência
 │   ├── migration_v1_1.sql ... migration_v6_3_separando.sql
+│   ├── migration_v6_4_senha_cliente.sql   # ADD COLUMN senha_alterada_em em clientes
 │   └── setup_inicial.sql
 ├── setup/
 │   ├── .htaccess                 # Deny from all — bloqueia acesso web
@@ -200,6 +201,50 @@ Pagamento pago: → cliente (pagamentoConfirmado)
 Pago→Separando: → cliente (statusAtualizado: separando)
 Status manual:  → cliente (statusAtualizado: {novoStatus}) se checkbox marcado
 ```
+
+### 6.5 Fluxo de Autenticação do Cliente (site público)
+
+```
+Cadastro → session_regenerate_id() → mergeOuMigrar(sessaoAnterior, sessaoNova, clienteId)
+Login    → autenticar(email, senha) → session_regenerate_id() → mergeOuMigrar(...)
+         → redirect para /minha-conta ou para URL de origem (?redirect=)
+Logout   → Session::delete(['cliente_id','cliente_nome','cliente_email']) → /minha-conta/login
+```
+
+**Recuperação de senha:**
+```
+/minha-conta/recuperar-senha → Mailer envia token de 1h
+/minha-conta/nova-senha/{token} → valida token → Cliente::alterarSenha()
+```
+
+**Alteração de senha (autenticado):**
+```
+GET/POST /minha-conta/alterar-senha (requer login)
+→ CSRF + rate limit (5 tentativas por sessão)
+→ autenticar(email, senhaAtual) para confirmar identidade
+→ password_hash(novaSenha, BCRYPT) + registro de senha_alterada_em
+→ session_regenerate_id() + redirect /minha-conta
+```
+
+### 6.6 Persistência e Merge do Carrinho
+
+O carrinho é identificado no banco por `sessao_id` (session PHP) e opcionalmente por `cliente_id`.
+
+**Fluxo após login/cadastro — `Carrinho::mergeOuMigrar()`:**
+
+| Caso | Situação | Ação |
+|---|---|---|
+| 1 | Sem carrinho anônimo | Atualiza `sessao_id` do carrinho do cliente para a nova sessão |
+| 2 | Só carrinho anônimo (conta nova ou sem sessão anterior) | Migra: `sessao_id = nova`, `cliente_id = X` no mesmo registro |
+| 3 | Ambos existem | Merge atômico em transação: soma quantidades, cap ao estoque, descarta inativos |
+
+**Regras do merge (Caso 3):**
+- `sessao_id` do carrinho do cliente atualizado **antes** da transação (garante acesso em falha)
+- Produto com `ativo = 0` ou `estoque_atual = 0`: descartado silenciosamente
+- Produto já presente no carrinho do cliente: `quantidade = MIN(qtd_cliente + qtd_anonimo, estoque_atual)`
+- Produto novo (não estava no carrinho do cliente): inserido com `preco_venda` atual do banco
+- Carrinho anônimo deletado ao final da transação; em falha: rollback, carrinho cliente acessível
+- `getOuCriar()` possui fallback por `cliente_id` caso `sessao_id` não coincida (safety net)
 
 ---
 
@@ -304,7 +349,7 @@ INFINITEPAY_WEBHOOK_SECRET=<256bits-hex>  # Gere com: php tools/gerar-webhook-se
 | Tabela | Descrição |
 |---|---|
 | `usuarios` | Administradores do painel (bcrypt) |
-| `clientes` | Compradores cadastrados |
+| `clientes` | Compradores cadastrados; campo `senha_alterada_em TIMESTAMP` registra último troca de senha |
 | `produtos` | Catálogo de produtos com dimensões e preços |
 | `categorias` | Categorias de produtos |
 | `pedidos` | Pedidos com status, frete, desconto PIX |
@@ -312,7 +357,7 @@ INFINITEPAY_WEBHOOK_SECRET=<256bits-hex>  # Gere com: php tools/gerar-webhook-se
 | `pagamentos` | Transações InfinitePay (idempotência) |
 | `vendas` | Vendas registradas (trigger do webhook) |
 | `venda_itens` | Itens de venda |
-| `carrinhos` | Carrinhos por sessão/cliente |
+| `carrinhos` | Carrinhos por `sessao_id` + `cliente_id`; migrados/mesclados via `mergeOuMigrar()` no login |
 | `carrinho_itens` | Itens do carrinho |
 | `insumos` | Matérias-primas (estoque com custo médio ponderado) |
 | `compras_insumos` | Entradas de insumos |
@@ -355,10 +400,21 @@ POST /checkout/finalizar        CheckoutController::finalizar
 GET  /checkout/sucesso          CheckoutController::sucesso
 GET  /checkout/aguardando       CheckoutController::aguardando
 POST /webhook/infinitepay/{secret}  WebhookController::infinitepay
-GET  /minha-conta               ClienteController::painel
-GET  /minha-conta/editar        ClienteController::editar
-POST /minha-conta/editar        ClienteController::salvar
-GET  /contato                   ContatoController::index
+GET  /minha-conta                           ClienteController::painel
+GET  /minha-conta/login                     ClienteController::login
+POST /minha-conta/login                     ClienteController::login
+GET  /minha-conta/logout                    ClienteController::logout
+GET  /minha-conta/cadastro                  ClienteController::cadastro
+POST /minha-conta/cadastro                  ClienteController::cadastro
+GET  /minha-conta/editar                    ClienteController::editarPerfil
+POST /minha-conta/editar                    ClienteController::editarPerfil
+GET  /minha-conta/alterar-senha             ClienteController::alterarSenha
+POST /minha-conta/alterar-senha             ClienteController::alterarSenha
+GET  /minha-conta/recuperar-senha           ClienteController::recuperarSenha
+POST /minha-conta/recuperar-senha           ClienteController::recuperarSenha
+GET  /minha-conta/nova-senha/{token}        ClienteController::novaSenha
+POST /minha-conta/nova-senha/{token}        ClienteController::novaSenha
+GET  /contato                               ContatoController::index
 POST /contato/enviar            ContatoController::enviar
 GET  /como-comprar              ComoComprarController::index
 GET  /pagamento                 PagamentoController::index
@@ -392,11 +448,12 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 
 ## 14. Status Atual do Desenvolvimento
 
-**Versão:** 6.3 — Fluxo automático pago→separando + e-mails pós-commit
+**Versão:** 6.5 — Persistência de carrinho após login + alteração de senha pelo cliente
 
 ### Funcionalidades implementadas e operacionais
 - [x] Catálogo de produtos com categorias e galeria de imagens
-- [x] Carrinho de compras (sessão + banco)
+- [x] Carrinho de compras (sessão + banco) com persistência após login/cadastro (v6.5)
+- [x] Merge inteligente de carrinhos anônimo + conta ao autenticar (v6.5)
 - [x] Checkout completo (endereço, frete, pagamento)
 - [x] Integração InfinitePay Checkout (link de pagamento)
 - [x] Webhook InfinitePay com idempotência e transação atômica
@@ -407,6 +464,8 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 - [x] Painel admin completo (pedidos, vendas, clientes, produtos, estoque, insumos, produção)
 - [x] Histórico de status de pedidos com timeline
 - [x] Gestão de clientes (CRUD admin + edição pelo próprio cliente)
+- [x] Alteração de senha pelo cliente autenticado com CSRF + rate limit + audit timestamp (v6.4)
+- [x] Recuperação de senha do cliente por e-mail com token de 1h
 - [x] Sistema de usuários admin com recuperação de senha
 - [x] Importador CLI de insumos (CSV)
 - [x] Módulo de produção (ficha técnica, ordens de produção)
@@ -414,7 +473,6 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 - [x] robots.txt + sitemap.xml
 - [x] CSRF em todos os formulários
 - [x] WebhookGuard (rate limiting + timing-safe validation)
-- [x] Recuperação de senha admin por e-mail com token de 1h
 - [x] Logs de webhook e e-mail
 
 ---
@@ -511,7 +569,7 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 ## 20. Checklist Pré-Deploy (Produção)
 
 - [ ] Criar `.env` no servidor com credenciais de produção (HostGator)
-- [ ] Rodar migrations pendentes: `migration_v6_1_email.sql`, `v6_2_historico.sql`, `v6_3_separando.sql`
+- [ ] Rodar migrations pendentes em ordem: `migration_v6_1_email.sql`, `v6_2_historico.sql`, `v6_3_separando.sql`, `v6_4_senha_cliente.sql`
 - [ ] Cadastrar tokens Melhor Envio de produção em `/admin/configuracoes`
 - [ ] Gerar novo webhook secret: `php tools/gerar-webhook-secret.php`
 - [ ] Registrar URL do webhook no dashboard InfinitePay: `https://irananatural.com.br/webhook/infinitepay/{secret}`
@@ -577,5 +635,5 @@ git push origin --force --all
 
 ---
 
-*Documento gerado por auditoria de segurança em 2026-05-11.*
+*Documento atualizado em 2026-05-11 — reflete versão 6.5 (persistência de carrinho + alteração de senha pelo cliente).*
 *Próxima revisão recomendada: antes de cada deploy em produção.*
