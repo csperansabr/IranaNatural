@@ -70,12 +70,16 @@ class InfinitePayProvider
         $curlErr  = curl_error($ch);
         curl_close($ch);
 
+        // Never log webhook_url — it contains the shared secret
+        $logPayload = $payload;
+        unset($logPayload['webhook_url']);
+
         $this->log([
             'event'     => 'create_checkout',
             'order_nsu' => $pedido['numero'],
             'http_code' => $httpCode,
             'curl_error'=> $curlErr ?: null,
-            'payload'   => $payload,
+            'payload'   => $logPayload,
             'response'  => $response,
         ]);
 

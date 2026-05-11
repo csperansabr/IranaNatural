@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 define('ROOT', __DIR__);
 
+require_once ROOT . '/config/env.php';     // must be first — other configs use env()
 require_once ROOT . '/config/database.php';
 require_once ROOT . '/config/app.php';
 require_once ROOT . '/config/payment.php';

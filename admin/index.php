@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 define('ROOT', dirname(__DIR__));
 
+require_once ROOT . '/config/env.php';     // must be first — other configs use env()
 require_once ROOT . '/config/database.php';
 require_once ROOT . '/config/app.php';
 require_once ROOT . '/config/payment.php';
@@ -44,15 +45,20 @@ if ($module === 'logout') {
     exit;
 }
 
-// Auth check (except login)
-if ($module !== 'login' && !Session::has(ADMIN_SESSION)) {
+// Módulos públicos (não exigem sessão ativa)
+$modulosPublicos = ['login', 'recuperar-senha', 'nova-senha'];
+
+if (!in_array($module, $modulosPublicos, true) && !Session::has(ADMIN_SESSION)) {
     header('Location: /admin/login');
     exit;
 }
 
 // Map modules → controllers
 $map = [
-    'login'       => 'Admin\\Controllers\\AuthController',
+    'login'           => 'Admin\\Controllers\\AuthController',
+    'recuperar-senha' => 'Admin\\Controllers\\AuthController',
+    'nova-senha'      => 'Admin\\Controllers\\AuthController',
+    'alterar-senha'   => 'Admin\\Controllers\\AuthController',
     'dashboard'   => 'Admin\\Controllers\\DashboardController',
     'categorias'  => 'Admin\\Controllers\\CategoriasController',
     'insumos'     => 'Admin\\Controllers\\InsumosController',
@@ -77,10 +83,12 @@ $ctrl = new $class();
 
 // ---- Routing por segmentos ----
 
-// /admin/login
-if ($module === 'login') {
-    $ctrl->login(); exit;
-}
+// ── Autenticação e perfil ────────────────────────────────────────────────────
+if ($module === 'login')           { $ctrl->login();                       exit; }
+if ($module === 'recuperar-senha') { $ctrl->recuperarSenha();              exit; }
+if ($module === 'nova-senha')      { $ctrl->novaSenha($seg1 ?? '');        exit; }
+if ($module === 'alterar-senha')   { $ctrl->alterarSenha();                exit; }
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── Módulo de Importação (routing personalizado) ──────────────────
 if ($module === 'importacao') {

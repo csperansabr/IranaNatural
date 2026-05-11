@@ -2,45 +2,36 @@
 // =============================================================================
 // Iraná Natural — Configuração de Frete
 // =============================================================================
+// Tokens sandbox e produção são gerenciados pelo painel administrativo:
+//   /admin/configuracoes → chaves frete_token_sandbox / frete_token_producao
+//
+// Este arquivo contém apenas as opções locais de entrega (não via API).
+// =============================================================================
 
-// Melhor Envio
-define('ME_TOKEN',      getenv('ME_TOKEN')      ?: '***REDACTED_ME_TOKEN***');
-define('ME_SANDBOX',    (bool)(getenv('ME_SANDBOX') ?: true));
-define('ME_API_URL',    ME_SANDBOX
-    ? 'https://sandbox.melhorenvio.com.br/api/v2/me'
-    : 'https://melhorenvio.com.br/api/v2/me');
-
-// CEP de origem (loja)
-define('ME_CEP_ORIGEM', getenv('ME_CEP_ORIGEM') ?: '92110-060');
-
-// Serviços Melhor Envio a consultar (IDs da API):
-// 1=PAC, 2=SEDEX, 9=Jadlog.Package, 10=Jadlog.Com
-define('ME_SERVICES', getenv('ME_SERVICES') ?: '1,2,9,10');
-
-// Opções de entrega local (mostradas sempre, após os fretes de transportadora)
+// Opções de entrega local — sempre exibidas independente da API.
 define('FRETE_LOCAIS', [
     [
-        'id'              => 'retirada',
-        'nome'            => 'Retirada em Mãos',
-        'transportadora'  => 'Local',
-        'valor'           => 0.00,
-        'prazo'           => 'A combinar',
-        'resp_cliente'    => false,
+        'id'             => 'retirada',
+        'nome'           => 'Retirada em Mãos',
+        'transportadora' => 'Local',
+        'valor'          => 0.00,
+        'prazo'          => 'A combinar',
+        'resp_cliente'   => false,
     ],
     [
-        'id'              => 'uber',
-        'nome'            => 'Uber/99 (por conta do cliente)',
-        'transportadora'  => 'Local',
-        'valor'           => 0.00,
-        'prazo'           => 'Mesmo dia',
-        'resp_cliente'    => true,
+        'id'             => 'uber',
+        'nome'           => 'Uber/99 (por conta do cliente)',
+        'transportadora' => 'Local',
+        'valor'          => 0.00,
+        'prazo'          => 'Mesmo dia',
+        'resp_cliente'   => true,
     ],
     [
-        'id'              => 'motoboy',
-        'nome'            => 'Motoboy (por conta do cliente)',
-        'transportadora'  => 'Local',
-        'valor'           => 0.00,
-        'prazo'           => 'Mesmo dia',
-        'resp_cliente'    => true,
+        'id'             => 'motoboy',
+        'nome'           => 'Motoboy (por conta do cliente)',
+        'transportadora' => 'Local',
+        'valor'          => 0.00,
+        'prazo'          => 'Mesmo dia',
+        'resp_cliente'   => true,
     ],
 ]);

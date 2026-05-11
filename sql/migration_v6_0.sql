@@ -31,4 +31,15 @@ ALTER TABLE `pedidos`
     ADD COLUMN IF NOT EXISTS resp_entrega_cliente TINYINT(1) NOT NULL DEFAULT 0
         COMMENT '1 = cliente contrata a entrega (Uber/Motoboy)' AFTER codigo_transportadora;
 
-SELECT 'migration_v6_0 aplicada — dimensoes em produtos, detalhes de frete em pedidos' AS status;
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. CONFIGURAÇÕES — valores padrão para o módulo de frete
+--    INSERT IGNORE: não sobrescreve valores já configurados pelo admin.
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT IGNORE INTO configuracoes (chave, valor, descricao) VALUES
+    ('frete_ativo',      '1',         'Cálculo de frete via Melhor Envio habilitado (1=sim, 0=não)'),
+    ('frete_sandbox',    '1',         'Ambiente Melhor Envio: 1=sandbox (testes), 0=produção'),
+    ('frete_cep_origem', '92110060',  'CEP de origem da loja (8 dígitos, sem hífen)'),
+    ('frete_timeout',    '15',        'Timeout da API Melhor Envio em segundos'),
+    ('frete_services',   '1,2,9,10',  'IDs dos serviços ME habilitados: 1=PAC,2=SEDEX,9=Jadlog.Package,10=Jadlog.Com');
+
+SELECT 'migration_v6_0 aplicada — dimensoes em produtos, detalhes de frete em pedidos, seeds de config' AS status;

@@ -65,8 +65,10 @@ class Pedido extends Model
 
             // Registrar status inicial no histórico
             $this->exec(
-                "INSERT INTO pedidos_historico (pedido_id, status, observacao) VALUES (?,?,?)",
-                [$pedidoId, 'aguardando_pagamento', 'Pedido criado — aguardando confirmação de pagamento']
+                "INSERT INTO pedidos_historico
+                    (pedido_id, status, status_anterior, observacao, admin_id, admin_nome, origem)
+                 VALUES (?,?,?,?,?,?,?)",
+                [$pedidoId, 'aguardando_pagamento', null, 'Pedido criado — aguardando confirmação de pagamento', null, null, 'sistema']
             );
 
             $this->commit();
@@ -123,12 +125,39 @@ class Pedido extends Model
         );
     }
 
-    public function atualizarStatus(int $id, string $status, string $obs = ''): void
-    {
+    public function atualizarStatus(
+        int    $id,
+        string $status,
+        string $obs       = '',
+        string $origem    = 'sistema',
+        ?int   $adminId   = null,
+        string $adminNome = ''
+    ): void {
+        $atual    = $this->queryOne("SELECT status FROM pedidos WHERE id = ?", [$id]);
+        $anterior = $atual['status'] ?? null;
+
         $this->update($id, ['status' => $status]);
         $this->exec(
-            "INSERT INTO pedidos_historico (pedido_id, status, observacao) VALUES (?,?,?)",
-            [$id, $status, $obs]
+            "INSERT INTO pedidos_historico
+                (pedido_id, status, status_anterior, observacao, admin_id, admin_nome, origem)
+             VALUES (?,?,?,?,?,?,?)",
+            [
+                $id,
+                $status,
+                $anterior,
+                $obs      ?: null,
+                $adminId,
+                $adminNome ?: null,
+                $origem,
+            ]
+        );
+    }
+
+    public function getHistorico(int $pedidoId): array
+    {
+        return $this->query(
+            "SELECT * FROM pedidos_historico WHERE pedido_id = ? ORDER BY criado_em ASC",
+            [$pedidoId]
         );
     }
 
@@ -236,8 +265,32 @@ class Pedido extends Model
             'cartao_credito' => 'Cartão de Crédito',
             'transferencia'  => 'Transferência Bancária',
             'dinheiro'       => 'Dinheiro',
+            'pendente'       => 'InfinitePay (PIX ou Cartão de Crédito)',
             default          => ucfirst(str_replace('_', ' ', $forma)),
         };
+    }
+
+    /** Marca flag de e-mail enviado. $tipo: 'pedido' | 'pago' | 'separando' */
+    public function marcarEmailEnviado(int $id, string $tipo): void
+    {
+        match($tipo) {
+            'pedido'    => $this->update($id, ['email_pedido_enviado'    => 1]),
+            'pago'      => $this->update($id, ['email_pago_enviado'      => 1]),
+            'separando' => $this->update($id, ['email_separando_enviado' => 1]),
+            default     => null,
+        };
+    }
+
+    /** Verifica se e-mail do tipo informado já foi enviado. */
+    public function isEmailEnviado(int $id, string $tipo): bool
+    {
+        $row = match($tipo) {
+            'pedido'    => $this->queryOne("SELECT email_pedido_enviado    AS v FROM pedidos WHERE id = ?", [$id]),
+            'pago'      => $this->queryOne("SELECT email_pago_enviado      AS v FROM pedidos WHERE id = ?", [$id]),
+            'separando' => $this->queryOne("SELECT email_separando_enviado AS v FROM pedidos WHERE id = ?", [$id]),
+            default     => null,
+        };
+        return (bool)($row['v'] ?? false);
     }
 
 }

@@ -77,6 +77,9 @@
             <a href="/admin/configuracoes" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/configuracoes') ? 'active' : '' ?>">
                 <span class="adm-nav-icon">⚙️</span> Configurações
             </a>
+            <a href="/admin/alterar-senha" class="adm-nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', '/admin/alterar-senha') ? 'active' : '' ?>">
+                <span class="adm-nav-icon">🔑</span> Alterar Senha
+            </a>
         </nav>
 
         <div class="adm-sidebar-footer">

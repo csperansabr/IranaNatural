@@ -79,6 +79,7 @@ class Carrinho extends Model
     {
         return $this->query(
             "SELECT ci.*, p.nome, p.slug, p.estoque_atual,
+                    p.peso, p.altura, p.largura, p.comprimento,
                     c.slug AS categoria_slug,
                     COALESCE(ip.caminho, '') AS imagem
              FROM carrinho_itens ci

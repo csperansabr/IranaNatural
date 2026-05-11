@@ -17,7 +17,7 @@ define('EMAIL_NOREPLY',  'noreply@irananatural.com.br');
 define('UPLOAD_DIR',     ROOT . '/uploads/');
 define('UPLOAD_URL',     APP_URL . '/uploads/');
 define('ADMIN_SESSION',  'iran_admin_user');
-define('INSTAGRAM_URL',  'https://instagram.com/irananatural');
+define('INSTAGRAM_URL',  'https://instagram.com/irana.natural');
 define('TIMEZONE',       'America/Sao_Paulo');
 
 date_default_timezone_set(TIMEZONE);

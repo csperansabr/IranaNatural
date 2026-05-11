@@ -8,7 +8,7 @@
             <span>Formas de Pagamento</span>
         </nav>
         <h1>Formas de Pagamento</h1>
-        <p class="page-hero-desc">Aceitamos PIX, transferência bancária, cartão de crédito ou débito e dinheiro na retirada. Tudo combinado pelo WhatsApp, de forma simples e segura.</p>
+        <p class="page-hero-desc">Aceitamos PIX e Cartão de Crédito no checkout online com ambiente seguro InfinitePay. Na retirada pessoal, também aceitamos dinheiro.</p>
     </div>
 </section>
 
@@ -24,19 +24,13 @@
             <div class="pagamento-card">
                 <div class="pagamento-icon" aria-hidden="true">⚡</div>
                 <h3>PIX</h3>
-                <p>Transferência instantânea disponível 24h por dia. A chave PIX é enviada pelo WhatsApp e tem validade de <strong>24 horas</strong>.</p>
-            </div>
-
-            <div class="pagamento-card">
-                <div class="pagamento-icon" aria-hidden="true">🏦</div>
-                <h3>Transferência Bancária</h3>
-                <p>TED ou DOC. Os dados bancários são enviados pelo WhatsApp. TEDs compensam no <strong>mesmo dia útil</strong>, dentro do horário bancário.</p>
+                <p>Pagamento instantâneo processado diretamente pela <strong>InfinitePay</strong> no checkout online. Confirmação automática em minutos, disponível 24h por dia.</p>
             </div>
 
             <div class="pagamento-card">
                 <div class="pagamento-icon" aria-hidden="true">💳</div>
-                <h3>Cartão de Crédito ou Débito</h3>
-                <p>Crédito em até <strong>12 parcelas com juros</strong> ou débito à vista, via link de pagamento (InfinitePay) enviado pelo WhatsApp ou maquininha na retirada pessoal.</p>
+                <h3>Cartão de Crédito</h3>
+                <p>Processado pela <strong>InfinitePay</strong> em ambiente seguro e certificado (PCI DSS). Disponível também via maquininha na retirada pessoal.</p>
             </div>
 
             <div class="pagamento-card">
@@ -54,26 +48,26 @@
         <div class="section-header">
             <span class="label-small">Como funciona</span>
             <h2>Do pedido à confirmação</h2>
-            <p style="color:var(--texto-medio);max-width:520px;margin:0.75rem auto 0">Não temos carrinho ou checkout automático. Todo o processo é feito pelo WhatsApp, de forma personalizada e sem pressa.</p>
+            <p style="color:var(--texto-medio);max-width:520px;margin:0.75rem auto 0">O pagamento online acontece no checkout da loja, em ambiente seguro da InfinitePay. Para compras presenciais com dinheiro, combine a retirada pelo WhatsApp.</p>
         </div>
 
         <div class="passos-grid">
             <div class="passo-item">
                 <div class="passo-numero" aria-hidden="true">1</div>
-                <h3>Escolha seus produtos</h3>
-                <p>Navegue pelo catálogo, escolha o que deseja e entre em contato pelo WhatsApp. Confirmamos disponibilidade, calculamos o frete e informamos o total antes de qualquer compromisso.</p>
+                <h3>Adicione ao carrinho</h3>
+                <p>Navegue pelo catálogo, escolha os produtos e adicione ao carrinho. Quando estiver pronto, acesse o checkout — é rápido e seguro.</p>
             </div>
 
             <div class="passo-item">
                 <div class="passo-numero" aria-hidden="true">2</div>
-                <h3>Informe como vai pagar</h3>
-                <p>Escolha sua forma de pagamento preferida. Enviamos a chave PIX, os dados bancários ou o link de pagamento seguro conforme a opção escolhida.</p>
+                <h3>Pague pelo InfinitePay</h3>
+                <p>Você será redirecionado para o ambiente seguro da InfinitePay, onde escolhe entre PIX ou Cartão de Crédito. Seus dados de pagamento nunca passam pelo nosso sistema.</p>
             </div>
 
             <div class="passo-item">
                 <div class="passo-numero" aria-hidden="true">3</div>
                 <h3>Pedido confirmado</h3>
-                <p>Após identificarmos o pagamento, confirmamos o pedido pelo WhatsApp e informamos o prazo de preparação e envio. Só então seu pedido entra na fila de produção.</p>
+                <p>A confirmação é automática — assim que o pagamento é aprovado, seu pedido entra imediatamente na fila de preparação, sem etapas manuais.</p>
             </div>
         </div>
     </div>
@@ -85,30 +79,14 @@
         <div class="institucional-conteudo">
 
             <h2>PIX</h2>
-            <p>A chave PIX aleatória é informada pelo WhatsApp no momento do fechamento do pedido. O pagamento deve ser realizado em até <strong>24 horas</strong> — após esse prazo, a reserva dos produtos é cancelada e os itens voltam ao estoque disponível.</p>
-            <p>Após efetuar o PIX, envie o comprovante pelo WhatsApp. A confirmação do pedido é feita assim que o pagamento é identificado, geralmente em poucos minutos.</p>
+            <p>O pagamento por PIX é realizado diretamente no checkout da loja, pelo ambiente seguro da InfinitePay. Após finalizar o pedido, você recebe o QR Code ou a chave PIX para pagamento. A confirmação é automática, geralmente em poucos minutos, e o pedido entra em preparação sem qualquer ação adicional da nossa parte.</p>
 
-            <h2>Transferência Bancária (TED / DOC)</h2>
-            <p>Os dados bancários completos são enviados pelo WhatsApp após a confirmação dos itens e do valor do frete. Após realizar a transferência, encaminhe o comprovante pelo WhatsApp para agilizar a confirmação.</p>
-            <ul>
-                <li><strong>TED</strong> — compensação no mesmo dia útil, desde que enviada dentro do horário bancário;</li>
-                <li><strong>DOC</strong> — compensação no próximo dia útil, independentemente do horário de envio.</li>
-            </ul>
+            <h2>Cartão de Crédito</h2>
+            <p>O pagamento por cartão de crédito também é processado integralmente pela InfinitePay no momento do checkout. Você insere os dados do cartão diretamente no ambiente seguro da InfinitePay — nenhuma informação de pagamento trafega pelo nosso sistema.</p>
+            <p>Para pedidos com <strong>retirada pessoal</strong>, o pagamento via maquininha também está disponível no ato da retirada.</p>
 
             <div class="alerta-info">
-                <strong>Preferência para pedidos com urgência:</strong> opte por PIX ou TED. O DOC, por compensar apenas no dia útil seguinte, atrasa a entrada do pedido na fila de preparação.
-            </div>
-
-            <h2>Cartão de Crédito ou Débito</h2>
-            <p>O pagamento por cartão é realizado de duas formas:</p>
-            <ul>
-                <li><strong>Link de pagamento</strong> — um link seguro gerado pela InfinitePay é enviado pelo WhatsApp. Você acessa o link, insere os dados do cartão e conclui o pagamento diretamente no ambiente seguro da InfinitePay, sem passar pelo nosso WhatsApp;</li>
-                <li><strong>Maquininha presencial</strong> — disponível exclusivamente na retirada pessoal. Aceita crédito e débito das principais bandeiras.</li>
-            </ul>
-            <p>O parcelamento em <strong>até 12 vezes</strong> está sujeito a juros. As taxas aplicadas a cada número de parcelas são informadas antes da confirmação do pedido para que você escolha a opção mais conveniente.</p>
-
-            <div class="alerta-info">
-                <strong>Seus dados de cartão ficam protegidos.</strong> A Iraná Natural não tem acesso ao número do cartão, CVV ou senha. O processamento é feito integralmente pela InfinitePay, plataforma certificada pelas bandeiras de cartão. Nenhuma informação de pagamento trafega pelo WhatsApp.
+                <strong>Seus dados de cartão ficam protegidos.</strong> A Iraná Natural não tem acesso ao número do cartão, CVV ou senha. O processamento é feito integralmente pela InfinitePay, plataforma certificada pelo padrão PCI DSS das bandeiras de cartão.
             </div>
 
             <h2>Dinheiro</h2>
@@ -124,13 +102,13 @@
         <div class="institucional-conteudo">
 
             <h2>Segurança das transações</h2>
-            <p>A Iraná Natural não armazena dados de cartão de crédito, senhas bancárias ou informações de acesso a contas em nenhum sistema próprio. O fluxo de pagamento foi estruturado para proteger você em todas as etapas:</p>
+            <p>A Iraná Natural não armazena dados de cartão de crédito, senhas ou qualquer informação de pagamento. O fluxo online foi estruturado para proteger você em todas as etapas:</p>
             <ul>
-                <li><strong>PIX e TED/DOC</strong> — transações diretas entre contas bancárias, protegidas pela infraestrutura do Banco Central e das instituições financeiras emissoras;</li>
-                <li><strong>Cartão via link</strong> — processado pela InfinitePay, certificada com o padrão PCI DSS. Os dados do cartão são inseridos diretamente no ambiente seguro da InfinitePay e nunca são compartilhados com a Iraná Natural;</li>
-                <li><strong>WhatsApp</strong> — todas as conversas são protegidas por criptografia de ponta a ponta (E2E). As mensagens são ilegíveis para terceiros, inclusive para a Meta.</li>
+                <li><strong>PIX e Cartão de Crédito online</strong> — processados pela InfinitePay, certificada com o padrão PCI DSS. Os dados são inseridos diretamente no ambiente seguro da InfinitePay e nunca são compartilhados com a Iraná Natural;</li>
+                <li><strong>Dinheiro na retirada</strong> — transação presencial e imediata, sem envolvimento de sistemas de pagamento;</li>
+                <li><strong>WhatsApp</strong> — utilizado apenas para atendimento e suporte, não como canal de pagamento.</li>
             </ul>
-            <p><strong>Atenção:</strong> a Iraná Natural jamais solicita senha de banco, código CVV isolado ou dados completos de cartão por mensagem de texto. O único contexto em que dados de cartão são inseridos é dentro do link seguro gerado pela InfinitePay. Se receber qualquer solicitação fora desse contexto, desconsidere e nos avise imediatamente pelo WhatsApp.</p>
+            <p><strong>Atenção:</strong> a Iraná Natural jamais solicita dados de cartão por mensagem ou WhatsApp. O único contexto em que dados de cartão são inseridos é dentro do ambiente seguro da InfinitePay, durante o checkout. Se receber qualquer solicitação fora desse contexto, desconsidere e nos avise imediatamente.</p>
 
         </div>
     </div>
@@ -142,30 +120,26 @@
         <div class="institucional-conteudo">
 
             <h2>Prazos de confirmação por forma de pagamento</h2>
-            <p>O pedido entra em preparação somente após a confirmação do pagamento. Veja o prazo esperado para cada método:</p>
+            <p>O pedido entra em preparação somente após a confirmação automática do pagamento. Veja o prazo esperado para cada método:</p>
             <ul>
-                <li><strong>PIX</strong> — confirmação em minutos após o envio do comprovante pelo WhatsApp;</li>
-                <li><strong>TED</strong> — confirmação no mesmo dia útil após a compensação bancária;</li>
-                <li><strong>DOC</strong> — confirmação no próximo dia útil;</li>
-                <li><strong>Cartão via link InfinitePay</strong> — confirmação após aprovação pelo sistema da InfinitePay, geralmente em poucos minutos;</li>
-                <li><strong>Maquininha / Dinheiro</strong> — confirmação imediata no ato da retirada.</li>
+                <li><strong>PIX</strong> — confirmação automática em poucos minutos após o pagamento;</li>
+                <li><strong>Cartão de Crédito</strong> — confirmação após aprovação pelo sistema da InfinitePay, geralmente em poucos minutos;</li>
+                <li><strong>Dinheiro na retirada</strong> — confirmação imediata no ato da retirada.</li>
             </ul>
 
-            <h2>Pagamento não realizado no prazo</h2>
-            <p>Se o pagamento não for efetuado dentro do prazo combinado — 24 horas para PIX — a reserva dos produtos é cancelada automaticamente e os itens voltam ao estoque. Para retomar o pedido, basta entrar em contato pelo WhatsApp. Verificamos a disponibilidade e reabrimos o pedido se os produtos ainda estiverem disponíveis.</p>
-
             <h2>Recusa do pagamento no cartão</h2>
-            <p>Recusas no cartão de crédito ou débito são processadas pelo sistema da InfinitePay com base nas políticas do banco emissor do cartão. As situações mais comuns incluem:</p>
+            <p>Recusas no cartão de crédito são processadas pelo sistema da InfinitePay com base nas políticas do banco emissor do cartão. As situações mais comuns incluem:</p>
             <ul>
-                <li>Limite de crédito insuficiente para o valor ou número de parcelas;</li>
+                <li>Limite de crédito insuficiente para o valor;</li>
                 <li>Cartão bloqueado para transações online ou vencido;</li>
                 <li>Transação bloqueada por suspeita de fraude pelo banco emissor;</li>
                 <li>Dados inseridos incorretamente (número, validade ou CVV).</li>
             </ul>
-            <p>Em caso de recusa, entre em contato pelo WhatsApp. Podemos reenviar o link, tentar um número de parcelas diferente ou mudar para outra forma de pagamento, como PIX ou TED. A Iraná Natural não tem acesso ao motivo específico da recusa — essa informação é fornecida apenas pelo seu banco emissor. Se precisar cancelar ou devolver o pedido, consulte nossa <a href="<?= APP_URL ?>/trocas">política de trocas e devoluções</a>.</p>
+            <p>Em caso de recusa, tente liberar a transação diretamente com seu banco — pelo aplicativo ou internet banking — antes de tentar novamente. Se o problema persistir, entre em contato pelo WhatsApp para que possamos ajudar. A Iraná Natural não tem acesso ao motivo específico da recusa — essa informação é fornecida apenas pelo seu banco emissor.</p>
+            <p>Se precisar cancelar ou devolver o pedido, consulte nossa <a href="<?= APP_URL ?>/trocas">política de trocas e devoluções</a>.</p>
 
             <div class="alerta-info">
-                <strong>Dica:</strong> se o pagamento via link for recusado repetidamente, tente liberar a transação diretamente com seu banco — pelo telefone, aplicativo ou internet banking — antes de tentar novamente. Bancos frequentemente bloqueiam compras online por segurança preventiva, especialmente em valores maiores ou em lojas não reconhecidas.
+                <strong>Dica:</strong> bancos frequentemente bloqueiam compras online por segurança preventiva, especialmente em lojas não reconhecidas. Liberar a transação pelo aplicativo do banco costuma resolver rapidamente.
             </div>
 
         </div>
@@ -178,9 +152,9 @@
         <div class="cta-box">
             <div class="cta-leaf" aria-hidden="true">🌿</div>
             <h2>Pronto para comprar?</h2>
-            <p>Entre em contato pelo WhatsApp, escolha seus produtos e finalize seu pedido de forma simples e segura.</p>
-            <a href="<?= Helper::whatsapp() ?>" class="btn btn-light btn-lg" target="_blank" rel="noopener">
-                Falar pelo WhatsApp
+            <p>Escolha seus produtos, adicione ao carrinho e finalize pelo checkout online de forma rápida e segura.</p>
+            <a href="<?= APP_URL ?>/produtos" class="btn btn-light btn-lg">
+                Ver produtos
             </a>
         </div>
     </div>

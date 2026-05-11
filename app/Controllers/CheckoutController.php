@@ -251,12 +251,23 @@ class CheckoutController extends Controller
             return;
         }
 
-        // 4. Clear cart and checkout session
+        // 4. Send "order created" confirmation emails (non-blocking)
+        if (!$this->pedidoModel->isEmailEnviado($pedidoId, 'pedido')) {
+            try {
+                Mailer::pedidoCliente($pedido, $pedidoItens, $cliente);
+                Mailer::pedidoLoja($pedido, $pedidoItens, $cliente);
+                $this->pedidoModel->marcarEmailEnviado($pedidoId, 'pedido');
+            } catch (\Throwable $e) {
+                error_log('[Checkout] E-mail pedido criado falhou: ' . $e->getMessage());
+            }
+        }
+
+        // 5. Clear cart and checkout session
         $this->carrinhoModel->limpar($carrinho['id']);
         Session::set('ultimo_pedido', $pedido['numero']);
         Session::delete('checkout_endereco');
 
-        // 5. Redirect to InfinitePay hosted checkout
+        // 6. Redirect to InfinitePay hosted checkout
         $this->redirect($ipResponse['checkout_url']);
     }
 
@@ -319,16 +330,6 @@ class CheckoutController extends Controller
         }
 
         $itens = $this->pedidoModel->getItens($pedido['id']);
-
-        if ($pedido['status'] === 'pago' && !Session::has('email_obrigado_' . $numero)) {
-            $cliente = $this->clienteModel->findById((int)$pedido['cliente_id']);
-            try {
-                Mailer::pedidoCliente($pedido, $itens, $cliente);
-            } catch (\Throwable $e) {
-                // Non-blocking
-            }
-            Session::set('email_obrigado_' . $numero, 1);
-        }
 
         $meta = ['title' => 'Pedido Confirmado — ' . APP_NAME, 'url' => APP_URL . '/checkout/obrigado/' . $numero];
         $this->render('checkout/obrigado', compact('meta', 'pedido', 'itens'));

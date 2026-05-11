@@ -19,7 +19,9 @@ class Database
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
             } catch (PDOException $e) {
-                die('Erro de conexão com o banco de dados: ' . $e->getMessage());
+                error_log('[Database] Connection failed: ' . $e->getMessage());
+                http_response_code(503);
+                die('Serviço temporariamente indisponível. Tente novamente em instantes.');
             }
         }
         return self::$instance;

@@ -78,7 +78,7 @@
                         Pagamento
                     </h3>
                     <p class="confirmar-bloco__texto">
-                        Você será redirecionado para o ambiente seguro da <strong>InfinitePay</strong> para escolher a forma de pagamento (PIX, cartão de crédito ou débito).
+                        Você será redirecionado para o ambiente seguro da <strong>InfinitePay</strong> para escolher a forma de pagamento (PIX ou cartão de crédito).
                     </p>
                 </div>
 
@@ -88,24 +88,44 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                         Entrega
                     </h3>
-                    <div id="frete-loading" class="frete-loading">
-                        <span class="frete-spinner"></span> Calculando opções de frete…
+
+                    <!-- Calculadora de CEP -->
+                    <div class="frete-calc">
+                        <div class="frete-calc__row">
+                            <input type="text" id="frete-cep-input"
+                                   class="form-input frete-calc__cep"
+                                   placeholder="00000-000"
+                                   maxlength="9"
+                                   inputmode="numeric"
+                                   value="<?= Helper::e(substr($endereco['cep'], 0, 5) . '-' . substr($endereco['cep'], 5)) ?>">
+                            <button type="button" id="btn-calcular-frete" class="btn btn-secondary frete-calc__btn">
+                                Calcular frete
+                            </button>
+                        </div>
+                        <p class="frete-calc__hint">CEP de entrega pré-preenchido com seu endereço. Altere se necessário.</p>
                     </div>
+
+                    <!-- Estado: carregando -->
+                    <div id="frete-loading" class="frete-loading" style="display:none">
+                        <span class="frete-spinner"></span> Consultando transportadoras…
+                    </div>
+
+                    <!-- Estado: erro -->
+                    <div id="frete-erro" class="frete-erro" style="display:none"></div>
+
+                    <!-- Opções de frete -->
                     <div id="frete-opcoes" class="frete-opcoes" style="display:none"></div>
-                    <div id="frete-erro" class="frete-erro" style="display:none">
-                        Não foi possível calcular o frete automaticamente. Por favor, selecione uma opção abaixo.
-                    </div>
                 </div>
 
-                <!-- Observações -->
+                <!-- Formulário de finalização -->
                 <form method="POST" action="<?= APP_URL ?>/checkout/finalizar" id="form-finalizar">
-                    <input type="hidden" name="_csrf" value="<?= Helper::e($csrf) ?>">
-                    <input type="hidden" name="frete_tipo"            id="inp-frete-tipo">
-                    <input type="hidden" name="frete_transportadora"  id="inp-frete-transportadora">
-                    <input type="hidden" name="frete_valor"           id="inp-frete-valor" value="0">
-                    <input type="hidden" name="frete_prazo"           id="inp-frete-prazo">
-                    <input type="hidden" name="frete_codigo"          id="inp-frete-codigo" value="0">
-                    <input type="hidden" name="frete_resp_cliente"    id="inp-frete-resp" value="0">
+                    <input type="hidden" name="_csrf"               value="<?= Helper::e($csrf) ?>">
+                    <input type="hidden" name="frete_tipo"          id="inp-frete-tipo">
+                    <input type="hidden" name="frete_transportadora" id="inp-frete-transportadora">
+                    <input type="hidden" name="frete_valor"         id="inp-frete-valor" value="0">
+                    <input type="hidden" name="frete_prazo"         id="inp-frete-prazo">
+                    <input type="hidden" name="frete_codigo"        id="inp-frete-codigo" value="0">
+                    <input type="hidden" name="frete_resp_cliente"  id="inp-frete-resp" value="0">
 
                     <div class="confirmar-bloco">
                         <h3 class="confirmar-bloco__titulo">Observações (opcional)</h3>
@@ -151,131 +171,212 @@
 
 <script>
 (function () {
-    var subtotal    = <?= (float)$total ?>;
-    var cep         = '<?= preg_replace('/\D/', '', $endereco['cep'] ?? '') ?>';
-    var freteValor  = 0;
-    var freteSelecionado = false;
+    var subtotal = <?= (float)$total ?>;
 
-    function fmt(v) {
-        return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
-
-    function atualizarResumo(valor) {
-        freteValor = valor;
-        var elFrete = document.getElementById('resumo-frete-valor');
-        var elTotal = document.getElementById('resumo-total');
-        if (elFrete) elFrete.textContent = valor === 0 ? 'Grátis' : fmt(valor);
-        if (elTotal) elTotal.textContent = fmt(subtotal + valor);
-    }
-
-    function selecionarOpcao(radio) {
-        var opcoes = document.querySelectorAll('.frete-opcao');
-        opcoes.forEach(function(el) { el.classList.remove('frete-opcao--selecionada'); });
-        var card = radio.closest('.frete-opcao');
-        if (card) card.classList.add('frete-opcao--selecionada');
-
-        document.getElementById('inp-frete-tipo').value           = radio.dataset.tipo;
-        document.getElementById('inp-frete-transportadora').value = radio.dataset.transportadora;
-        document.getElementById('inp-frete-valor').value          = radio.dataset.valor;
-        document.getElementById('inp-frete-prazo').value          = radio.dataset.prazo;
-        document.getElementById('inp-frete-codigo').value         = radio.dataset.codigo;
-        document.getElementById('inp-frete-resp').value           = radio.dataset.resp;
-        atualizarResumo(parseFloat(radio.dataset.valor));
-        freteSelecionado = true;
-    }
-
-    function renderOpcoes(opcoes) {
-        var el = document.getElementById('frete-opcoes');
-        if (!opcoes || !opcoes.length) {
-            document.getElementById('frete-loading').style.display = 'none';
-            document.getElementById('frete-erro').style.display    = 'block';
-            el.style.display = 'block';
-            // Still render local options from server-side constant if JS fails,
-            // but here we just show the error — local options come from the API response too
-            return;
-        }
-        var html = '';
-        opcoes.forEach(function (o, i) {
-            var label = o.nome;
-            var preco = parseFloat(o.valor);
-            var precoLabel = preco <= 0 ? '<strong>Grátis</strong>' : '<strong>' + fmt(preco) + '</strong>';
-            var prazoLabel = o.prazo ? '<small>' + o.prazo + '</small>' : '';
-            var aviso = o.resp_cliente ? '<span class="frete-resp-aviso">Você contrata diretamente</span>' : '';
-            html += '<label class="frete-opcao">';
-            html += '<input type="radio" name="frete_radio" value="' + i + '"'
-                + ' data-tipo="' + o.id + '"'
-                + ' data-transportadora="' + escHtml(o.transportadora) + '"'
-                + ' data-valor="' + preco + '"'
-                + ' data-prazo="' + escHtml(o.prazo) + '"'
-                + ' data-codigo="' + (o.codigo || 0) + '"'
-                + ' data-resp="' + (o.resp_cliente ? 1 : 0) + '">';
-            html += '<span class="frete-opcao__info">'
-                + '<span class="frete-opcao__nome">' + escHtml(label) + '</span>'
-                + prazoLabel + aviso + '</span>';
-            html += '<span class="frete-opcao__preco">' + precoLabel + '</span>';
-            html += '</label>';
-        });
-        el.innerHTML = html;
-        el.style.display = 'block';
-        document.getElementById('frete-loading').style.display = 'none';
-
-        el.querySelectorAll('input[type=radio]').forEach(function (r) {
-            r.addEventListener('change', function () { selecionarOpcao(this); });
-        });
-
-        // Auto-select first option
-        var first = el.querySelector('input[type=radio]');
-        if (first) { first.checked = true; selecionarOpcao(first); }
-    }
-
-    function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    // Local options always available as fallback
+    /* ── Opções locais (fallback quando API falha) ── */
     var opcoesLocais = <?= json_encode(array_map(function($l) {
         return [
-            'id'           => $l['id'],
-            'nome'         => $l['nome'],
-            'transportadora'=> $l['transportadora'],
-            'valor'        => (float)$l['valor'],
-            'prazo'        => $l['prazo'],
-            'codigo'       => 0,
-            'tipo'         => 'local',
-            'resp_cliente' => (bool)$l['resp_cliente'],
+            'id'             => $l['id'],
+            'nome'           => $l['nome'],
+            'transportadora' => $l['transportadora'],
+            'valor'          => (float)$l['valor'],
+            'prazo'          => $l['prazo'],
+            'codigo'         => 0,
+            'tipo'           => 'local',
+            'resp_cliente'   => (bool)$l['resp_cliente'],
         ];
     }, FRETE_LOCAIS), JSON_UNESCAPED_UNICODE) ?>;
 
-    function mostrarSoLocais() {
-        document.getElementById('frete-loading').style.display = 'none';
-        document.getElementById('frete-erro').style.display    = 'block';
-        renderOpcoes(opcoesLocais);
+    /* ── Helpers ── */
+    function fmt(v) {
+        return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Load frete options on page load
-    if (cep.length === 8) {
+    /* ── Atualiza sidebar ── */
+    function atualizarResumo(valor) {
+        var elFrete = document.getElementById('resumo-frete-valor');
+        var elTotal = document.getElementById('resumo-total');
+        if (elFrete) elFrete.textContent = valor <= 0 ? 'Grátis' : fmt(valor);
+        if (elTotal) elTotal.textContent = fmt(subtotal + valor);
+    }
+
+    /* ── Limpa seleção ── */
+    function limparSelecao() {
+        ['inp-frete-tipo','inp-frete-transportadora','inp-frete-prazo'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        document.getElementById('inp-frete-valor').value = '0';
+        document.getElementById('inp-frete-codigo').value = '0';
+        document.getElementById('inp-frete-resp').value = '0';
+        atualizarResumo(0);
+        var elFrete = document.getElementById('resumo-frete-valor');
+        if (elFrete) elFrete.textContent = '—';
+        var elTotal = document.getElementById('resumo-total');
+        if (elTotal) elTotal.textContent = fmt(subtotal);
+    }
+
+    /* ── Seleciona opção via radio ── */
+    function selecionarOpcao(radio) {
+        document.querySelectorAll('.frete-opcao').forEach(function(el) {
+            el.classList.remove('frete-opcao--selecionada');
+        });
+        var card = radio.closest('.frete-opcao');
+        if (card) card.classList.add('frete-opcao--selecionada');
+
+        document.getElementById('inp-frete-tipo').value            = radio.dataset.tipo;
+        document.getElementById('inp-frete-transportadora').value  = radio.dataset.transportadora;
+        document.getElementById('inp-frete-valor').value           = radio.dataset.valor;
+        document.getElementById('inp-frete-prazo').value           = radio.dataset.prazo;
+        document.getElementById('inp-frete-codigo').value          = radio.dataset.codigo;
+        document.getElementById('inp-frete-resp').value            = radio.dataset.resp;
+        atualizarResumo(parseFloat(radio.dataset.valor) || 0);
+    }
+
+    /* ── Renderiza lista de opções ── */
+    function renderOpcoes(opcoes, comErroApi) {
+        var elOpcoes  = document.getElementById('frete-opcoes');
+        var elLoading = document.getElementById('frete-loading');
+        var elErro    = document.getElementById('frete-erro');
+
+        elLoading.style.display = 'none';
+
+        if (comErroApi) {
+            elErro.textContent  = 'Não foi possível consultar as transportadoras. Veja as opções de entrega disponíveis:';
+            elErro.style.display = 'block';
+        } else {
+            elErro.style.display = 'none';
+        }
+
+        if (!opcoes || !opcoes.length) {
+            elErro.textContent   = 'Nenhuma opção de entrega disponível para este CEP.';
+            elErro.style.display = 'block';
+            elOpcoes.style.display = 'none';
+            return;
+        }
+
+        var html = '';
+        opcoes.forEach(function (o, i) {
+            var preco      = parseFloat(o.valor) || 0;
+            var precoLabel = preco <= 0
+                ? '<strong class="frete-opcao__gratis">Grátis</strong>'
+                : '<strong>' + fmt(preco) + '</strong>';
+            var prazoLabel = o.prazo
+                ? '<small class="frete-opcao__prazo">' + escHtml(o.prazo) + '</small>'
+                : '';
+            var aviso = o.resp_cliente
+                ? '<span class="frete-resp-aviso">Você contrata diretamente</span>'
+                : '';
+
+            html += '<label class="frete-opcao">'
+                + '<input type="radio" name="frete_radio" value="' + i + '"'
+                + ' data-tipo="'           + escHtml(o.id)              + '"'
+                + ' data-transportadora="' + escHtml(o.transportadora)  + '"'
+                + ' data-valor="'          + preco                       + '"'
+                + ' data-prazo="'          + escHtml(o.prazo)           + '"'
+                + ' data-codigo="'         + (parseInt(o.codigo) || 0)  + '"'
+                + ' data-resp="'           + (o.resp_cliente ? 1 : 0)   + '">'
+                + '<span class="frete-opcao__info">'
+                +   '<span class="frete-opcao__nome">' + escHtml(o.nome) + '</span>'
+                +   prazoLabel + aviso
+                + '</span>'
+                + '<span class="frete-opcao__preco">' + precoLabel + '</span>'
+                + '</label>';
+        });
+
+        elOpcoes.innerHTML     = html;
+        elOpcoes.style.display = 'block';
+
+        elOpcoes.querySelectorAll('input[type=radio]').forEach(function (r) {
+            r.addEventListener('change', function () { selecionarOpcao(this); });
+        });
+
+        // Auto-seleciona a primeira opção
+        var first = elOpcoes.querySelector('input[type=radio]');
+        if (first) { first.checked = true; selecionarOpcao(first); }
+    }
+
+    /* ── Valida CEP ── */
+    function cepValido(cep) {
+        return /^\d{8}$/.test(cep.replace(/\D/g, ''));
+    }
+
+    /* ── Exibe erro de CEP ── */
+    function mostrarErroCep(msg) {
+        var el = document.getElementById('frete-erro');
+        el.textContent   = msg;
+        el.style.display = 'block';
+        document.getElementById('frete-loading').style.display = 'none';
+        document.getElementById('frete-opcoes').style.display  = 'none';
+        limparSelecao();
+    }
+
+    /* ── Consulta a API de frete ── */
+    function calcularFrete() {
+        var rawCep = document.getElementById('frete-cep-input').value;
+        var cep    = rawCep.replace(/\D/g, '');
+
+        if (!cepValido(cep)) {
+            mostrarErroCep('Informe um CEP válido com 8 dígitos.');
+            return;
+        }
+
+        // Reset visual
+        limparSelecao();
+        document.getElementById('frete-loading').style.display = 'block';
+        document.getElementById('frete-opcoes').style.display  = 'none';
+        document.getElementById('frete-erro').style.display    = 'none';
+        document.getElementById('btn-calcular-frete').disabled = true;
+
         fetch('<?= APP_URL ?>/api/frete/calcular', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cep: cep })
+            body:    JSON.stringify({ cep: cep })
         })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            if (data.ok && data.opcoes && data.opcoes.length) renderOpcoes(data.opcoes);
-            else mostrarSoLocais();
+            document.getElementById('btn-calcular-frete').disabled = false;
+            if (data.ok && data.opcoes && data.opcoes.length) {
+                renderOpcoes(data.opcoes, false);
+            } else {
+                // API falhou ou não retornou opções — exibe só as locais
+                renderOpcoes(opcoesLocais, true);
+            }
         })
-        .catch(function () { mostrarSoLocais(); });
-    } else {
-        mostrarSoLocais();
+        .catch(function () {
+            document.getElementById('btn-calcular-frete').disabled = false;
+            renderOpcoes(opcoesLocais, true);
+        });
     }
 
-    // Form submit validation
-    document.getElementById('form-finalizar')?.addEventListener('submit', function (e) {
+    /* ── Máscara CEP ── */
+    document.getElementById('frete-cep-input').addEventListener('input', function () {
+        var digits = this.value.replace(/\D/g, '').slice(0, 8);
+        this.value = digits.length > 5 ? digits.slice(0, 5) + '-' + digits.slice(5) : digits;
+    });
+
+    /* ── Botão calcular ── */
+    document.getElementById('btn-calcular-frete').addEventListener('click', calcularFrete);
+
+    /* ── Enter no campo CEP dispara cálculo ── */
+    document.getElementById('frete-cep-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); calcularFrete(); }
+    });
+
+    /* ── Validação ao submeter ── */
+    document.getElementById('form-finalizar').addEventListener('submit', function (e) {
         var tipo = document.getElementById('inp-frete-tipo').value;
         if (!tipo) {
             e.preventDefault();
-            alert('Por favor, selecione uma opção de entrega antes de continuar.');
             document.getElementById('bloco-frete').scrollIntoView({ behavior: 'smooth' });
+            var el = document.getElementById('frete-erro');
+            el.textContent   = 'Calcule o frete e selecione uma opção de entrega antes de continuar.';
+            el.style.display = 'block';
             return;
         }
         var btn = document.getElementById('btn-finalizar');

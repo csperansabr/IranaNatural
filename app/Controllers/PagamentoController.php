@@ -11,7 +11,7 @@ class PagamentoController extends Controller
     {
         $meta = [
             'title'       => 'Formas de Pagamento — Iraná Natural',
-            'description' => 'Aceitamos PIX, transferência bancária (TED/DOC), cartão de crédito em até 12x com juros e dinheiro na retirada. Pagamento via WhatsApp, com link seguro InfinitePay para cartão.',
+            'description' => 'Aceitamos PIX e cartão de crédito via InfinitePay no checkout online seguro. Dinheiro aceito exclusivamente na retirada pessoal. Pagamentos processados pela InfinitePay, certificada PCI DSS.',
             'url'         => APP_URL . '/pagamento',
         ];
 

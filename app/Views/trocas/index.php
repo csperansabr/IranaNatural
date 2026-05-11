@@ -145,7 +145,6 @@
             <p>Após a aprovação da solicitação, o reembolso é processado de acordo com a forma de pagamento original:</p>
             <ul>
                 <li><strong>PIX</strong> — reembolso via PIX em até <strong>3 dias úteis</strong> após a aprovação. A chave PIX de destino será solicitada pelo WhatsApp;</li>
-                <li><strong>Transferência bancária (TED/DOC)</strong> — reembolso via TED em até <strong>3 dias úteis</strong> após a aprovação. Os dados bancários serão solicitados pelo WhatsApp;</li>
                 <li><strong>Cartão de crédito</strong> — estorno processado pela InfinitePay em até <strong>3 dias úteis</strong> após a aprovação. O prazo para o valor aparecer na fatura depende do banco emissor e do ciclo de fechamento do cartão — podendo aparecer na fatura atual ou na seguinte;</li>
                 <li><strong>Dinheiro (retirada presencial)</strong> — reembolso em dinheiro ou via PIX, conforme preferência combinada pelo WhatsApp.</li>
             </ul>

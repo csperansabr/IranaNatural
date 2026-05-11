@@ -1,0 +1,159 @@
+#################################################
+# ENVIRONMENT / SECRETS
+#################################################
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+#################################################
+# LOCAL CONFIG / CREDENCIAIS
+#################################################
+
+config/database_local.php
+config/*_local.php
+config/*_dev.php
+config/debug.php
+.user.ini
+
+#################################################
+# LOGS
+#################################################
+
+logs/
+*.log
+error_log
+php_errorlog
+
+#################################################
+# UPLOADS / GENERATED FILES
+#################################################
+
+uploads/
+tmp/
+temp/
+
+#################################################
+# CACHE / SESSIONS
+#################################################
+
+cache/
+storage/cache/
+storage/sessions/
+sessions/
+*.cache
+
+#################################################
+# DATABASE / DUMPS / BACKUPS
+#################################################
+
+*.sql
+*.sql.gz
+*.dump
+*.bak
+
+# Permite migrations e esquema versionados em sql/
+!sql/
+!sql/migration_*.sql
+!sql/schema.sql
+!sql/seed.sql
+!sql/produtos.sql
+!sql/setup_inicial.sql
+
+# Bloqueia dumps completos (expõem IP de servidor, dados reais)
+sql/SiteIrana_*.sql
+sql/*_HostGator.sql
+sql/*_Localhost.sql
+sql/*_Backup.sql
+sql/*_backup.sql
+
+# Relatórios de comparação de banco (expõem estrutura interna)
+sql/*.html
+database/
+
+#################################################
+# SETUP / INSTALADORES
+#################################################
+
+setup/
+setup_inicial.php
+install.php
+
+#################################################
+# TESTS / COVERAGE
+#################################################
+
+coverage/
+.phpunit.result.cache
+
+#################################################
+# DEPENDÊNCIAS
+#################################################
+
+vendor/
+node_modules/
+
+#################################################
+# IDE / EDITOR
+#################################################
+
+.vscode/
+.idea/
+*.code-workspace
+
+#################################################
+# OS FILES
+#################################################
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+#################################################
+# TEMP FILES
+#################################################
+
+*.swp
+*.swo
+*~
+*.tmp
+
+#################################################
+# LOCAL TOOLING
+#################################################
+
+.claude/
+.cursor/
+
+#################################################
+# RUNTIME
+#################################################
+
+*.pid
+*.sock
+
+#################################################
+# ARCHIVES
+#################################################
+
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+#################################################
+# HOSTING / CPANEL
+#################################################
+
+.user.ini
+.cpanel/
+cPanel_*.txt
+.htpasswd
+php.ini

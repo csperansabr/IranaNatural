@@ -56,7 +56,7 @@
                 <div class="contato-icon" aria-hidden="true">📸</div>
                 <div>
                     <h4>Instagram</h4>
-                    <a href="<?= INSTAGRAM_URL ?>" target="_blank" rel="noopener">@irananatural</a>
+                    <a href="<?= INSTAGRAM_URL ?>" target="_blank" rel="noopener">@irana.natural</a>
                     <p>Acompanhe novos produtos, bastidores da produção artesanal e lançamentos. DMs respondidas sempre que possível.</p>
                 </div>
             </div>

@@ -2635,3 +2635,31 @@ section { padding: 5rem 0; }
     white-space: nowrap;
     text-align: right;
 }
+
+/* ── Calculadora de CEP (checkout confirmar) ────────────── */
+.frete-calc {
+    margin-bottom: 1rem;
+}
+.frete-calc__row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.frete-calc__cep {
+    width: 140px;
+    flex-shrink: 0;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+}
+.frete-calc__btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.frete-calc__hint {
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--texto-claro);
+}
+.frete-opcao__gratis { color: var(--verde-floresta); }
+.frete-opcao__prazo  { color: var(--texto-claro); display: block; margin-top: 2px; }

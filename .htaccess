@@ -2,7 +2,23 @@ Options -Indexes
 RewriteEngine On
 RewriteBase /
 
-# Force HTTPS (uncomment on production)
+# Block direct access to sensitive files
+<FilesMatch "^\.env(\..*)?$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+<FilesMatch "\.(log|sql|md|gitignore|lock|ini|sh|bak|dump)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to development/utility directories
+<IfModule mod_rewrite.c>
+    RewriteRule ^(tests|tools|setup|config)(/|$) - [F,L]
+</IfModule>
+
+# Force HTTPS — ATIVAR EM PRODUÇÃO (comentado para não quebrar dev local)
+# Descomentar as 2 linhas abaixo antes de fazer deploy no HostGator:
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 

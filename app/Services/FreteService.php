@@ -1,46 +1,92 @@
 <?php
 namespace App\Services;
 
-use App\Models\Produto;
+use App\Models\Configuracao;
 
 class FreteService
 {
     /**
-     * Calcula todas as opções de frete para o CEP destino e os itens do carrinho.
+     * Calcula todas as opções de frete disponíveis para o CEP destino
+     * e os itens do carrinho informados.
      *
-     * @param  string $cepDestino  CEP numérico ou formatado
-     * @param  array  $itensCarrinho  Itens com produto_id, quantidade, preco_unitario
-     * @return array  Lista de opções de frete prontas para exibição
+     * As dimensões (peso, altura, largura, comprimento) devem vir nos próprios
+     * itens — retornados por Carrinho::getItens(), que já faz JOIN com produtos.
+     * As opções locais (Retirada/Uber/Motoboy) são sempre retornadas,
+     * independente do status da integração Melhor Envio.
+     *
+     * @param  string $cepDestino    CEP numérico ou formatado
+     * @param  array  $itensCarrinho Itens com produto_id, quantidade, preco_unitario, peso, altura, largura, comprimento
+     * @return array  Opções de frete prontas para exibição no checkout
      */
     public function calcular(string $cepDestino, array $itensCarrinho): array
     {
-        $produtoModel = new Produto();
+        $config     = new Configuracao();
+        $freteAtivo = (bool)(int)$config->get('frete_ativo', '1');
+
         $produtosApi  = [];
+        $semDimensoes = [];
+        $pesoTotal    = 0.0;
 
         foreach ($itensCarrinho as $item) {
-            $p = $produtoModel->findById((int)$item['produto_id']);
-            if (!$p) continue;
+            $produtoId   = (int)($item['produto_id'] ?? 0);
+            $qtd         = max(1, (int)($item['quantidade'] ?? 1));
+            $peso        = (float)($item['peso']        ?? 0);
+            $altura      = (int)($item['altura']        ?? 0);
+            $largura     = (int)($item['largura']       ?? 0);
+            $comprimento = (int)($item['comprimento']   ?? 0);
+
+            if ($peso <= 0 || $altura <= 0 || $largura <= 0 || $comprimento <= 0) {
+                $semDimensoes[] = $produtoId;
+            }
+
+            $pesoTotal += $peso * $qtd;
 
             $produtosApi[] = [
-                'id'              => $p['id'],
-                'peso'            => max(0.001, (float)($p['peso']        ?? 0.1)),
-                'altura'          => max(1,     (int)($p['altura']        ?? 10)),
-                'largura'         => max(1,     (int)($p['largura']       ?? 10)),
-                'comprimento'     => max(1,     (int)($p['comprimento']   ?? 15)),
-                'quantidade'      => max(1,     (int)$item['quantidade']),
-                'valor_segurado'  => round((float)$item['preco_unitario'] * (int)$item['quantidade'], 2),
+                'id'             => $produtoId,
+                'peso'           => $peso,
+                'altura'         => $altura,
+                'largura'        => $largura,
+                'comprimento'    => $comprimento,
+                'quantidade'     => $qtd,
+                'valor_segurado' => round((float)($item['preco_unitario'] ?? 0) * $qtd, 2),
             ];
+        }
+
+        if (!empty($semDimensoes)) {
+            @file_put_contents(
+                ROOT . '/logs/melhorenvio.log',
+                json_encode([
+                    'ts'          => date('c'),
+                    'alerta'      => 'Produtos sem dimensões cadastradas — frete calculado com valores mínimos',
+                    'produto_ids' => $semDimensoes,
+                    'cep_destino' => $cepDestino,
+                ], JSON_UNESCAPED_UNICODE) . "\n",
+                FILE_APPEND | LOCK_EX
+            );
         }
 
         $opcoes = [];
 
-        // Fretes de transportadora via Melhor Envio
-        if (!empty($produtosApi) && ME_TOKEN !== 'SEU_TOKEN_MELHOR_ENVIO_AQUI') {
-            $meService = new MelhorEnvioService();
-            $opcoes    = $meService->calcular($cepDestino, $produtosApi);
+        // Fretes via Melhor Envio — só chama se o módulo estiver ativo
+        if ($freteAtivo && !empty($produtosApi)) {
+            try {
+                $opcoes = (new MelhorEnvioService())->calcular($cepDestino, $produtosApi);
+            } catch (\Throwable $e) {
+                @file_put_contents(
+                    ROOT . '/logs/melhorenvio.log',
+                    json_encode([
+                        'ts'           => date('c'),
+                        'err'          => $e->getMessage(),
+                        'cep_destino'  => $cepDestino,
+                        'qtd_produtos' => count($produtosApi),
+                        'peso_total_kg'=> round($pesoTotal, 3),
+                    ], JSON_UNESCAPED_UNICODE) . "\n",
+                    FILE_APPEND | LOCK_EX
+                );
+            }
         }
 
-        // Opções locais (sempre exibidas)
+        // Opções locais — sempre exibidas após as transportadoras
         foreach (FRETE_LOCAIS as $local) {
             $opcoes[] = [
                 'id'             => $local['id'],
@@ -58,22 +104,20 @@ class FreteService
     }
 
     /**
-     * Valida se a seleção de frete é aceitável.
-     * Carriers devem ter valor > 0; opções locais são sempre aceitas.
+     * Valida se a seleção de frete submetida é aceitável.
      *
-     * @param  string $tipo     ID da opção (ex: 'pac', 'retirada', 'uber')
-     * @param  float  $valor    Valor enviado pelo POST
-     * @return string|null      Mensagem de erro, ou null se válido
+     * @param  string $tipo   ID da opção (ex: 'pac', 'retirada', 'uber')
+     * @param  float  $valor  Valor informado pelo POST
+     * @return string|null    Mensagem de erro, ou null se válido
      */
     public function validarSelecao(string $tipo, float $valor): ?string
     {
-        if ($tipo === '') return 'Selecione uma opção de frete antes de continuar.';
-
-        $locais = array_column(FRETE_LOCAIS, 'id');
-        if (!in_array($tipo, $locais, true) && $valor < 0) {
+        if ($tipo === '') {
+            return 'Selecione uma opção de entrega antes de continuar.';
+        }
+        if ($valor < 0) {
             return 'Valor de frete inválido.';
         }
-
         return null;
     }
 }

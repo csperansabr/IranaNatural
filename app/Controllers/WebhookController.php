@@ -2,6 +2,8 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Mailer;
+use App\Core\WebhookGuard;
 use App\Models\Pedido;
 use App\Models\Pagamento;
 use App\Models\Venda;
@@ -18,19 +20,13 @@ class WebhookController extends Controller
      */
     public function infinitepay(string $secret = ''): void
     {
-        // Validate webhook secret
-        $configSecret = defined('INFINITEPAY_WEBHOOK_SECRET') ? INFINITEPAY_WEBHOOK_SECRET : '';
-        if ($configSecret !== '' && $secret !== $configSecret) {
-            http_response_code(403);
-            header('Content-Type: application/json');
-            echo json_encode(['ok' => false, 'msg' => 'Unauthorized']);
-            exit;
-        }
+        // Security gate: validates method, Content-Type, payload size,
+        // rate limit, and timing-safe secret. Exits on any violation.
+        $ip = (new WebhookGuard())->gate($secret);
 
         // Read raw body
         $rawBody = (string)file_get_contents('php://input');
         $payload = json_decode($rawBody, true);
-        $ip      = $_SERVER['REMOTE_ADDR'] ?? '';
 
         $pagamentoModel = new Pagamento();
         $pedidoModel    = new Pedido();
@@ -136,8 +132,8 @@ class WebhookController extends Controller
                 // ── Atomic transaction: status + payment + sale + stock + mov ──
                 $pedidoModel->beginTransaction();
                 try {
-                    // 1. Update pedido status + history
-                    $pedidoModel->atualizarStatus($pedido['id'], $novoStatus, $obs);
+                    // 1. Register payment confirmation (pago) in history
+                    $pedidoModel->atualizarStatus($pedido['id'], $novoStatus, $obs, 'webhook');
 
                     // 2. Update extra columns on pedidos
                     $pedidoUpdate = [];
@@ -165,6 +161,16 @@ class WebhookController extends Controller
                     //    caller (this method) already owns the transaction.
                     if ($novoStatus === 'pago') {
                         $this->efetivarVenda($pedido, $pedidoModel, $formaParaVenda, $valorPagoRaw);
+
+                        // 5. Automatically advance to 'separando' in the same transaction.
+                        //    Reads pedidos.status (= 'pago' from step 1) as status_anterior.
+                        //    Final committed state: pedidos.status = 'separando'.
+                        $pedidoModel->atualizarStatus(
+                            $pedido['id'],
+                            'separando',
+                            'Pagamento confirmado automaticamente via InfinitePay. Pedido encaminhado para separação.',
+                            'webhook'
+                        );
                     }
 
                     $pedidoModel->commit();
@@ -174,6 +180,45 @@ class WebhookController extends Controller
                     throw $txErr;
                 }
                 // ─────────────────────────────────────────────────────────────
+
+                // Post-commit emails — non-blocking, each guarded by its own idempotency flag.
+                // If this webhook fires again (e.g. InfinitePay retry), the order will be
+                // 'separando' so the secondary idempotency check (terminalPagoStatuses)
+                // skips the whole block — but the flags also prevent double sends in any
+                // edge case where the block is entered more than once.
+                if ($novoStatus === 'pago') {
+                    $clienteEmail = [
+                        'nome'     => (string)($pedido['cliente_nome']     ?? ''),
+                        'email'    => (string)($pedido['cliente_email']    ?? ''),
+                        'cpf'      => (string)($pedido['cliente_cpf']      ?? ''),
+                        'telefone' => (string)($pedido['cliente_telefone'] ?? ''),
+                    ];
+                    $pedidoParaEmail = array_merge($pedido, [
+                        'status'          => 'pago',
+                        'forma_pagamento' => $formaParaPedido,
+                    ]);
+
+                    // Email 1: pagamento aprovado (template detalhado com itens)
+                    if (!$pedidoModel->isEmailEnviado($pedido['id'], 'pago')) {
+                        try {
+                            $itensEmail = $pedidoModel->getItens($pedido['id']);
+                            Mailer::pagamentoConfirmado($pedidoParaEmail, $itensEmail, $clienteEmail);
+                            $pedidoModel->marcarEmailEnviado($pedido['id'], 'pago');
+                        } catch (\Throwable $emailErr) {
+                            error_log('[Webhook] E-mail pagamentoConfirmado falhou: ' . $emailErr->getMessage());
+                        }
+                    }
+
+                    // Email 2: status Em Separação (template de atualização de status)
+                    if (!$pedidoModel->isEmailEnviado($pedido['id'], 'separando')) {
+                        try {
+                            Mailer::statusAtualizado($pedidoParaEmail, 'separando', '', $clienteEmail);
+                            $pedidoModel->marcarEmailEnviado($pedido['id'], 'separando');
+                        } catch (\Throwable $emailErr) {
+                            error_log('[Webhook] E-mail separando falhou: ' . $emailErr->getMessage());
+                        }
+                    }
+                }
             }
 
             // Log is always written AFTER the transaction (never inside it)
@@ -185,7 +230,8 @@ class WebhookController extends Controller
             $logData['erro'] = get_class($e) . ': ' . $e->getMessage();
             $pagamentoModel->registrarWebhookLog($logData);
             http_response_code(500);
-            echo json_encode(['ok' => false, 'msg' => 'Processing error: ' . $e->getMessage()]);
+            // Never expose internal exception details in the HTTP response
+            echo json_encode(['ok' => false, 'msg' => 'Internal error']);
         }
 
         exit;

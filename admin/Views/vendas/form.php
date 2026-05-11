@@ -26,7 +26,6 @@
                         <option value="dinheiro">Dinheiro</option>
                         <option value="debito">Débito</option>
                         <option value="credito">Crédito</option>
-                        <option value="transferencia">Transferência</option>
                         <option value="outro">Outro</option>
                     </select>
                 </div>

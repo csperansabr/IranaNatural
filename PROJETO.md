@@ -1,628 +1,581 @@
-# Iraná Natural — Registro de Implementações
+# Iraná Natural — Documentação Técnica do Projeto
+
+> **Última atualização:** 2026-05-11
+> **Versão do sistema:** 6.3
+> **Status:** Desenvolvimento ativo — pré-deploy de produção
 
 ---
 
-## [2026-05-08] Correção Regra PIX + Auditoria Completa v3.0
+## 1. Visão Geral
 
-### Problema identificado
+**Iraná Natural** é um e-commerce artesanal PHP com painel administrativo integrado, voltado para venda de produtos naturais (incensos, chás, banhos de erva, escalda pés). Hospedagem em HostGator (cPanel), ambiente de desenvolvimento em Laragon/Windows.
 
-O desconto PIX era calculado **sobre o subtotal total** (`subtotal × 5%`), em vez de ser aplicado **individualmente no preço unitário** de cada item. Isso criava inconsistência entre o que estava armazenado em `pedido_itens` (preço original), o que era enviado à InfinitePay (preço com ratio aplicado internamente), e o que era exibido nas views.
+---
 
-### Regra de negócio corrigida
+## 2. Objetivo do Sistema
+
+Permitir que clientes realizem compras online com pagamento via InfinitePay (PIX, cartão), gestão completa de pedidos e estoque pelo painel admin, cálculo de frete via API Melhor Envio, e notificações automáticas por e-mail ao longo do ciclo do pedido.
+
+---
+
+## 3. Arquitetura Atual
 
 ```
-valor_unitario_pix = round(preco_venda × (1 - 5/100), 2)
-valor_total_item   = valor_unitario_pix × quantidade
-total_pedido       = Σ(valor_total_item) + frete
+MVC artesanal sem framework
+├── index.php          → Front controller + roteador
+├── app/
+│   ├── Controllers/   → Controladores do site público
+│   ├── Models/        → Modelos com PDO direto
+│   ├── Views/         → Templates PHP puros
+│   ├── Core/          → Router, Session, Database, Mailer, WebhookGuard
+│   └── Services/      → FreteService, MelhorEnvioService
+├── admin/             → Painel administrativo (namespace Admin)
+├── config/            → Configs carregadas por index.php
+├── assets/            → CSS, JS, imagens estáticas
+├── sql/               → Migrations versionadas (migration_vX_Y.sql)
+├── setup/             → Instaladores CLI (bloqueados por .htaccess)
+├── tests/             → Scripts de teste CLI (webhook simulator)
+└── tools/             → Utilitários de desenvolvimento CLI
 ```
 
-**NÃO realizado:** desconto aplicado sobre subtotal (`subtotal × pct`).
-
-### Arquivos alterados
-
-#### Backend — lógica de negócio
-
-**`app/Core/InfinitePayProvider.php`**
-- Removido cálculo de ratio interno (`$pixPct`, `$ratio`, `* $ratio`).
-- Provider agora recebe preços finais nos itens e os envia diretamente à API InfinitePay (sem transformação adicional).
-- Única fonte de verdade para desconto: `CheckoutController`.
-
-**`app/Models/Pedido.php` — `criar()`**
-- Alterado: `$total = round($subtotal + $frete, 2)` (antes: `$subtotal + $frete - $desconto`).
-- O campo `desconto` em `pedidos` agora é **armazenado para exibição e auditoria**, não para dedução do total — pois o desconto já está embutido nos preços dos itens.
-
-**`app/Controllers/CheckoutController.php` — `finalizar()`**
-- Desconto PIX aplicado por item antes de montar `$pedidoItens`.
-- `pedido_itens.preco_unitario` = preço com desconto (ex: R$ 95,00).
-- `pedido_itens.subtotal` = `preco_unitario_pix × quantidade`.
-- `pedidos.desconto` = diferença monetária real (ex: R$ 10,00), armazenada como referência.
-- `pedidos.desconto_pix_pct` = percentual (ex: 5.00), para referência e exibição.
-- `pagamentos.valor_original` = subtotal original antes do desconto (auditoria).
-- `pagamentos.valor_desconto` = desconto monetário exato.
-- `pagamentos.valor_cobrado` = total efetivamente cobrado.
-
-**`app/Controllers/CheckoutController.php` — `confirmar()`**
-- Cálculo do total também corrigido para usar desconto por item.
-
-#### Frontend — exibição
-
-**`app/Views/checkout/confirmar.php`**
-- Quando PIX: exibe preço original (riscado) + preço PIX por item.
-- Sidebar já exibia subtotal/desconto/total corretamente.
-
-**`app/Views/checkout/obrigado.php`**
-- Desconto PIX exibido como "você economizou R$ X,XX" (informativo).
-- Mostra percentual aplicado (`desconto_pix_pct`).
-
-**`admin/Views/pedidos/ver.php`**
-- Cabeçalho da coluna indica "(c/ PIX)" para pedidos PIX.
-- Por item: exibe preço original riscado + preço PIX em verde.
-- Rodapé: "Economia com PIX" (informativo, não deduzido do total).
-- Nota: "Desconto PIX de X% aplicado individualmente em cada item".
-
-**`assets/css/style.css`**
-- Adicionados: `.preco-riscado` (tachado, cinza) e `.preco-pix-item` (verde escuro).
-
-#### Limpeza técnica
-
-- Removido: `config/database_old.php` (obsoleto).
-- Removido: `assets/images/logo_old.png` (obsoleto).
-
-### Consistência final entre camadas
-
-| Camada | Preço exibido |
-|--------|--------------|
-| Listagem produtos | Original + PIX (5% OFF badge) |
-| Página produto | Original + PIX + parcelamento |
-| Carrinho | Original por item; total PIX no sidebar |
-| Checkout confirmar | Original riscado + PIX por item |
-| Checkout obrigado | Preço PIX por item + economia total |
-| Pedido (DB) | `preco_unitario` = preço PIX; `desconto` = economia |
-| InfinitePay payload | Preços finais (PIX já aplicado) |
-| Admin pedidos | Preço PIX + original riscado + nota de economia |
-
-### Pontos críticos de configuração (não alterados — requerem ajuste manual)
-
-- `config/payment.php` → `INFINITEPAY_WEBHOOK_SECRET` deve ser trocado por um segredo aleatório forte.
-- `config/payment.php` → `INFINITEPAY_HANDLE` deve ser o InfiniteTag da conta em produção.
-- `config/database.php` → credenciais devem ser variáveis de ambiente em produção.
-
 ---
 
-## [2026-05-07] Melhorias Prioritárias (Segurança, UX, SEO)
+## 4. Tecnologias Utilizadas
 
-### 1. CSRF Protection no formulário de contato
-
-**Arquivos modificados:**
-- `app/Controllers/ContatoController.php` — `index()` passa `$csrf = Session::csrfToken()` para a view; `enviar()` verifica `Session::verifyCsrf($_POST['_csrf'])` antes de qualquer processamento
-- `app/Views/contato/index.php` — campo `<input type="hidden" name="_csrf" value="...">` adicionado logo após `<form>`
-
-**Implementação:** usa `Session::csrfToken()` (já existia na classe) — token por sessão, gerado com `bin2hex(random_bytes(32))`. Rejeição redireciona para `/contato` com flash de erro.
-
----
-
-### 2. robots.txt
-
-**Arquivo criado:** `robots.txt` (raiz do projeto — servido diretamente pelo Apache via .htaccess `!-f`)
-
-**Regras:**
-- `Allow: /` — indexação pública de todas as páginas relevantes
-- `Disallow: /admin/` — painel administrativo bloqueado
-- `Disallow: /config/` — arquivos de configuração PHP bloqueados
-- `Disallow: /app/` — código-fonte PHP bloqueado
-- `Disallow: /uploads/temp/` — diretório temporário bloqueado; `/uploads/` (imagens) permanece acessível
-- `Sitemap: https://irananatural.com.br/sitemap.xml`
-
----
-
-### 3. sitemap.xml
-
-**Arquivo criado:** `sitemap.xml` (raiz do projeto — servido diretamente pelo Apache)
-
-**10 URLs incluídas** com `lastmod`, `changefreq` e `priority`:
-- `/` — priority 1.0, weekly
-- `/produtos` — priority 0.9, weekly
-- `/sobre` — priority 0.7, monthly
-- `/como-comprar` — priority 0.8, monthly
-- `/pagamento`, `/envio`, `/garantia`, `/trocas` — priority 0.6, monthly
-- `/contato` — priority 0.5, monthly
-- `/politica-privacidade` — priority 0.4, yearly
-
-**Nota:** URLs de produtos individuais (`/produtos/{cat}/{slug}`) não incluídas — são dinâmicas e dependem de conteúdo no banco. Podem ser adicionadas com um SitemapController dinâmico futuramente.
-
----
-
-### 4. Active state no menu de navegação
-
-**Arquivo modificado:** `app/Views/layouts/default.php`
-
-**Implementação:** bloco PHP antes do `<header>` define `$_navPath` a partir de `$_GET['url']` e closure `$_active(string $seg): string` que retorna `' active'` quando:
-- `$seg === '/'` → match exato (home)
-- outros → `str_starts_with($_navPath, $seg)` (cobre subpáginas como `/produtos/cat/slug`)
-
-**CSS:** `.nav-link.active` já existia com `color: var(--verde-floresta); border-bottom-color: var(--verde-floresta)` — nenhum estilo novo necessário.
-
----
-
-### 5. Cross-links internos
-
-**Arquivos modificados:**
-- `app/Views/como-comprar/index.php` — `.section-crosslink` ao final das seções de pagamento (→ `/pagamento`) e entrega (→ `/envio`)
-- `app/Views/envio/index.php` — link inline para `/trocas` no alerta de avaria no transporte
-- `app/Views/pagamento/index.php` — link inline para `/trocas` no final da seção de recusas
-- `app/Views/garantia/index.php` — link inline para `/trocas` na seção de resolução aprovada
-- `app/Views/trocas/index.php` — link inline para `/garantia` na seção de defeito de fabricação
-- `assets/css/style.css` — nova classe `.section-crosslink` com estilo de texto pequeño + link verde
-
----
-
-## [2026-05-07] Revisão Geral — Páginas Institucionais (2ª rodada)
-
-### Escopo da revisão
-Todas as páginas institucionais implementadas nesta sessão: Como Comprar, Envio, Pagamento, Garantia, Trocas, Política de Privacidade, Contato.
-
-### Problemas encontrados e corrigidos
-
-| # | Severidade | Problema | Correção aplicada |
-|---|---|---|---|
-| 1 | 🔴 Visual | `garantia`: seções "Prazo" e "Procedimento" tinham fundos idênticos (off-white consecutivo) | Reorganizados os `class` das 4 seções de conteúdo para alternância bege→off-white perfeita; adicionada regra `.section-institucional-alt .passo-numero` no CSS para o box-shadow do número no fundo bege |
-| 2 | 🟠 Copy | `politica-privacidade` seção 9: "72 horas úteis" (= 9 dias úteis) conflitava com "15 dias úteis" da seção 8 | Corrigido para "72 horas (3 dias corridos)" — prazo adequado para dúvidas gerais de privacidade |
-| 3 | 🟠 Conteúdo | `como-comprar`: Jadlog ausente do grid de entrega (presente em `/envio` mas omitido aqui) | Card "Correios — PAC ou SEDEX" atualizado para "Correios e Jadlog" com descrição cobrindo ambas as transportadoras |
-| 4 | 🟡 CSS | `.contato-aviso` usava `!important` para sobrescrever `.contato-item p` | Substituído por seletor mais específico `.contato-item .contato-aviso` sem `!important` |
-
-### Arquivos modificados
-- `app/Views/garantia/index.php` — 4 classes de seção trocadas para alternância correta
-- `app/Views/politica-privacidade/index.php` — "72 horas úteis" → "72 horas (3 dias corridos)"
-- `app/Views/como-comprar/index.php` — card Correios inclui Jadlog
-- `assets/css/style.css` — nova regra `.section-institucional-alt .passo-numero`; seletor `.contato-item .contato-aviso` sem `!important`
-
-### Validações confirmadas ✓
-- **Alternância de fundos**: todas as páginas alternam bege-claro ↔ off-white corretamente, sem seções consecutivas de mesmo fundo
-- **Rotas**: 9 rotas registradas e operacionais (`/`, `/produtos`, `/sobre`, `/contato`, `/como-comprar`, `/politica-privacidade`, `/envio`, `/pagamento`, `/garantia`, `/trocas`)
-- **Menus**: navbar com 5 links (Início, Produtos, Sobre, Como Comprar, Contato); sem duplicações
-- **Rodapé**: 4 colunas (Marca, Navegação, Informações, Contato); `footer-bottom` com link "Política de Privacidade" → `/politica-privacidade`
-- **Breadcrumbs**: todos presentes com `aria-label="Trilha de navegação"`
-- **SEO**: `title`, `description`, `canonical`, Open Graph em todas as 9 páginas
-- **Acessibilidade**: `aria-hidden` em ícones decorativos; `aria-label` em botões; `role="alert"` nos flashes do formulário; labels associados a inputs
-- **Links externos**: todos com `target="_blank" rel="noopener"` (ou `noopener noreferrer` em links não-WhatsApp)
-- **Constantes**: `WHATSAPP`, `EMAIL_CONTATO`, `INSTAGRAM_URL`, `APP_URL`, `APP_NAME` usadas consistentemente via constantes e `Helper::whatsapp()`
-- **Responsividade**: `.contato-grid` colapsa em 1024px; `.passos-grid` em 768px; `.pagamentos-grid` em 2 col a 480px; `.entrega-grid` em 1 col a 480px; `.footer-grid` em 2 col (1024px) e 1 col (768px)
-- **Consistência de componentes**: todos usam `.page-hero`, `.breadcrumb`, `.section-header`, `.label-small`, `.section-cta`, `.btn`, `.btn-light`, `.btn-lg`, `Helper::whatsapp()`
-- **Tipografia**: Cormorant Garamond + Lato; paleta verde/bege/marrom; CSS variables em toda a extensão
-
-### Melhorias futuras recomendadas
-1. **Cross-links internos**: em "Como Comprar", adicionar "Saiba mais →" nos cards de Pagamento e Entrega apontando para `/pagamento` e `/envio`
-2. **Nav active state**: marcar o link da página atual no menu com classe `active` — requer lógica PHP no layout comparando a URL atual
-3. **robots.txt e sitemap.xml**: criar para garantir indexação correta das rotas
-4. **Fontes auto-hospedadas**: substituir Google Fonts por arquivos locais (melhora LCP e elimina dependência externa)
-5. **Schema.org BreadcrumbList**: JSON-LD de breadcrumb nas páginas institucionais para enriquecer snippets no Google
-6. **CSRF no formulário de contato**: adicionar token CSRF ao `ContatoController@enviar` para prevenir envios automatizados
-7. **og:image por página**: imagens Open Graph específicas por página em vez de uma única imagem padrão
-
----
-
-## [2026-05-07] Página "Contato" — versão completa
-
-### Rota
-`GET /contato` → `ContatoController@index` (rota já existia — view reescrita)
-`POST /contato/enviar` → `ContatoController@enviar` (inalterado)
-
-### Arquivos modificados
-- `app/Views/contato/index.php` — reescrita completa com mensagem institucional, 5 canais/items e formulário aprimorado
-- `app/Controllers/ContatoController.php` — meta description atualizada
-- `assets/css/style.css` — novas classes: `.contato-intro`, `.canal-badge`, `.contato-aviso`, `.form-intro`, `.form-obrigatorio`, `.form-privacidade`
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb + descrição acolhedora
-2. **Mensagem institucional** — `.contato-intro` em `.section-institucional-alt`: posiciona a marca como atendimento humano e artesanal; indica WhatsApp como canal principal
-3. **Grid de canais + formulário** — `.section-contato` com `.contato-grid` (2 colunas, colapsa em 1024px):
-   - **Esquerda** — 5 itens: WhatsApp (badge "Mais rápido"), E-mail, Instagram, Horário de Atendimento, Retirada Pessoal
-   - **Direita** — formulário com intro, campos (nome, e-mail, assunto, mensagem), submit, nota de privacidade com link para `/politica-privacidade`
-
-### Regras de negócio aplicadas
-- **WhatsApp**: canal principal — (51) 99229-6036, indicado para pedidos, dúvidas e suporte ágil
-- **E-mail**: EMAIL_CONTATO; resposta em até **2 dias úteis**
-- **Instagram**: @irananatural; DMs respondidas quando possível (sem SLA)
-- **Horário**: Seg–Sex 9h–18h; Sáb 9h–13h; mensagens fora do horário respondidas no próximo período
-- **Endereço físico**: não publicado — combinado via WhatsApp após confirmação do pedido
-- **FAQ**: não incluído (decisão do cliente)
-- **Formulário**: campos com `maxlength`, `autocomplete`, `novalidate` (validação server-side pelo ContatoController existente); nota de privacidade linká à `/politica-privacidade`
-- **Estorno cartão**: N/A nesta página
-- **Canais adicionais**: nenhum além de WhatsApp, Instagram e e-mail
-
----
-
-## [2026-05-07] Página "Trocas e Devoluções" — versão completa
-
-### Rota
-`GET /trocas` → `TrocasController@index` (rota já existia — view e controller reescritos)
-
-### Arquivos modificados
-- `app/Views/trocas/index.php` — reescrita completa com política de trocas e devoluções detalhada
-- `app/Controllers/TrocasController.php` — meta description atualizada
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb
-2. **Motivos aceitos** — `.sobre-valores` com 4 cards: arrependimento, defeito, avaria, produto divergente
-3. **Procedimento** — `.passos-grid` com 3 etapas: acionamento WhatsApp → devolução física → análise e resolução
-4. **Detalhes por motivo** — `.section-institucional-alt`: regras específicas de cada motivo (prazos, condições, frete)
-5. **Frete reverso** — `.section-institucional`: tabela textual de responsabilidade por motivo
-6. **Reembolso e estorno** — `.section-institucional-alt`: por forma de pagamento (PIX/TED 3 dias úteis, cartão estorno InfinitePay, dinheiro presencial), troca por equivalente
-7. **Recusas** — `.section-institucional`: fora do prazo, produto com uso (arrependimento), mau uso, vencido, alergia a ingrediente listado
-8. **CTA** — botão WhatsApp
-
-### Regras de negócio aplicadas
-- **Arrependimento** (CDC art. 49): 7 dias corridos do recebimento; produto lacrado sem uso; frete retorno por conta do cliente; reembolso somente valor do produto (frete original não reembolsado)
-- **Defeito de fabricação** (CDC art. 26, I): 30 dias corridos; frete retorno por conta da Iraná Natural
-- **Avaria no transporte**: 30 dias corridos; frete retorno por conta da Iraná Natural
-- **Produto divergente**: 30 dias corridos; frete retorno por conta da Iraná Natural
-- **Análise**: 2 dias úteis após recebimento do produto devolvido
-- **Reembolso**: até 3 dias úteis após aprovação; PIX/TED direto; estorno no cartão via InfinitePay (prazo adicional conforme banco emissor)
-- **Troca**: produto equivalente enviado sem custo de frete adicional; prazo informado pelo WhatsApp
-- **Recusas**: fora do prazo, produto aberto/com uso (arrependimento), mau uso, armazenamento inadequado, após validade, reação a ingrediente listado
-- **Exceção alergia**: coberta se o ingrediente causador NÃO estava listado na composição (erro de descrição)
-- **Produtos personalizados**: não existem — todos são de linha padrão; nenhuma exclusão adicional de arrependimento
-
----
-
-## [2026-05-07] Página "Garantia de Qualidade" — versão completa
-
-### Rota
-`GET /garantia` → `GarantiaController@index` (rota já existia — view e controller reescritos)
-
-### Arquivos modificados
-- `app/Views/garantia/index.php` — reescrita completa com política de garantia detalhada
-- `app/Controllers/GarantiaController.php` — meta description atualizada
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb
-2. **Compromisso de qualidade** — `.sobre-valores` com 3 cards: ingredientes naturais, produção artesanal, embalagem protetora
-3. **Prazo e elegibilidade** — `.institucional-conteudo`: prazo 30 dias CDC art. 26 I (não duráveis), vícios ocultos (CDC art. 26 §3º), produtos elegíveis
-4. **Procedimento** — `.passos-grid` com 3 etapas: contato WhatsApp → devolução física → análise e resolução
-5. **Análise e condições de aprovação** — `.section-institucional-alt`: o que é avaliado, condições para aprovação, opções de resolução (troca ou reembolso CDC art. 18)
-6. **Exclusões** — `.section-institucional`: mau uso, armazenamento inadequado, produto vencido, reações a ingredientes listados, resultado estético subjetivo
-7. **Responsabilidades do cliente** — `.section-institucional-alt`: inspeção no recebimento, armazenamento correto, uso dentro do prazo, leitura de ingredientes, acionamento no prazo
-8. **CTA** — botão WhatsApp
-
-### Regras de negócio aplicadas
-- **Classificação CDC**: produtos não duráveis (cosméticos, sabonetes, óleos) → prazo de 30 dias corridos (CDC art. 26, I)
-- **Vícios ocultos**: prazo começa da descoberta do defeito (CDC art. 26, §3º)
-- **Garantia adicional**: não há prazo contratual adicional fixo — análise caso a caso com boa-fé
-- **Devolução física**: obrigatória antes da aprovação — análise não é feita apenas por fotos
-- **Frete de retorno**: Iraná Natural arca com os custos em casos de defeito de fabricação ou dano no transporte
-- **Prazo de análise**: até 2 dias úteis após o recebimento do produto devolvido
-- **Resolução**: troca por produto equivalente ou reembolso via PIX/TED — definido caso a caso (CDC art. 18)
-- **Reações alérgicas**: cobertas apenas se o ingrediente causador NÃO estava listado na descrição (erro de omissão); reações a ingredientes listados são responsabilidade do cliente
-- **Exclusões**: mau uso, armazenamento inadequado, uso após validade, resultado estético subjetivo, reação a ingredientes listados
-
----
-
-## [2026-05-07] Página "Pagamento" — versão completa
-
-### Rota
-`GET /pagamento` → `PagamentoController@index` (rota já existia — apenas a view foi reescrita)
-
-### Arquivo modificado
-- `app/Views/pagamento/index.php` — reescrita completa com conteúdo financeiro e operacional detalhado
-- `app/Controllers/PagamentoController.php` — meta description atualizada
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb
-2. **Métodos aceitos** — `.pagamentos-grid` com 4 cards: PIX, Transferência Bancária, Cartão Crédito/Débito, Dinheiro
-3. **Fluxo de pagamento** — `.passos-grid` com 3 etapas: escolha → informe como pagar → pedido confirmado
-4. **Detalhes por método** — `.section-institucional-alt` / `.institucional-conteudo`: PIX (chave aleatória, 24h), TED/DOC (mesmo dia / próximo dia útil), Cartão (link InfinitePay + maquininha + parcelamento com juros), Dinheiro (retirada)
-5. **Segurança das transações** — `.section-institucional`: InfinitePay PCI DSS, E2E WhatsApp, sem armazenamento de dados de cartão
-6. **Confirmação e recusas** — `.section-institucional-alt`: prazos por método, pedido não pago no prazo, recusa de cartão (motivos + orientações)
-7. **CTA** — botão WhatsApp
-
-### Regras de negócio aplicadas
-- **PIX**: chave aleatória enviada pelo WhatsApp; válida por **24 horas**; após o prazo a reserva é cancelada
-- **TED**: compensação no mesmo dia útil (dentro do horário bancário)
-- **DOC**: compensação no próximo dia útil
-- **Cartão de crédito**: link InfinitePay ou maquininha na retirada; parcelamento em até 12x **com juros** (taxas informadas antes de confirmar — valores serão detalhados em atualização futura)
-- **Cartão de débito**: à vista, via link InfinitePay ou maquininha presencial
-- **Dinheiro**: exclusivamente na retirada pessoal, troco disponível se informado antes
-- **Dados de cartão**: processados integralmente pela InfinitePay (PCI DSS); Iraná Natural não tem acesso
-- **Recusa de cartão**: cliente deve contatar o banco emissor; alternativas (PIX, TED) oferecidas pelo WhatsApp
-- **Pedido não pago**: reserva cancelada após 24h; reaberto via WhatsApp se disponível
-
----
-
-## [2026-05-07] Página "Envio" — versão completa
-
-### Rota
-`GET /envio` → `EnvioController@index` (rota já existia — apenas a view foi reescrita)
-
-### Arquivo modificado
-- `app/Views/envio/index.php` — reescrita completa com conteúdo logístico detalhado
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb
-2. **Jornada do pedido** — `.passos-grid` com 3 etapas: confirmação → embalagem → postagem e rastreamento
-3. **Formas de envio** — `.entrega-grid` com 6 cards: Correios PAC, Correios SEDEX, Jadlog, Motoboy/Uber Flash, Entrega local, Retirada pessoal
-4. **Frete e rastreamento** — `.institucional-conteudo`: cálculo via WhatsApp, links de rastreamento Correios e Jadlog
-5. **Políticas de entrega** — `.institucional-conteudo`: prazo de postagem, possíveis atrasos, endereço incorreto, tentativas, pacote devolvido
-6. **CTA** — botão WhatsApp
-
-### Regras de negócio aplicadas
-- **Prazo de postagem**: sem prazo fixo — combinado caso a caso via WhatsApp antes da confirmação
-- **Frete grátis**: não existe — custo sempre calculado e aprovado antes de confirmar
-- **Endereço incorreto**: custo de reenvio é responsabilidade do cliente
-- **Tentativas Correios**: 3 tentativas; se sem sucesso, objeto retorna ao remetente
-- **Jadlog**: tentativas conforme política interna da transportadora (não fixado)
-- **Pacote devolvido**: cliente paga novo frete; produto reservado por 30 dias aguardando contato
-- **Rastreamento**: código enviado via WhatsApp após postagem; links para rastreamento.correios.com.br e Jadlog
-
----
-
-## [2026-05-07] Política de Privacidade e Segurança (LGPD robusta)
-
-### Rota
-`GET /politica-privacidade` → `PoliticaPrivacidadeController@index`
-Rota anterior `GET /seguranca` **removida** (controller e view de `/seguranca` permanecem no disco como arquivos órfãos — podem ser excluídos manualmente quando conveniente).
-
-### Arquivos criados
-- `app/Controllers/PoliticaPrivacidadeController.php`
-- `app/Views/politica-privacidade/index.php`
-
-### Arquivos modificados
-- `index.php` — rota `/seguranca` substituída por `/politica-privacidade`
-- `app/Views/layouts/default.php` — link do rodapé atualizado de `/seguranca` para `/politica-privacidade`; link "Política de Privacidade" adicionado ao `footer-bottom`
-- `assets/css/style.css` — novos estilos: `.politica-data`, `.politica-table-wrap`, `table`/`th`/`td` dentro de `.institucional-conteudo`, `code` dentro de `.institucional-conteudo`, `.footer-bottom a`
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb
-2. **Visão geral** — 4 cards de compromisso (coleta mínima, LGPD, transações seguras, direitos)
-3. **Política completa** (10 seções em `.institucional-conteudo`):
-   - Seção 1: Quem somos / Controladora
-   - Seção 2: Dados coletados (fornecidos + automáticos + o que NÃO coletamos)
-   - Seção 3: Finalidade e bases legais — tabela com base LGPD art. 7º por tipo de dado
-   - Seção 4: Cookies — tabela funcionais (PHPSESSID) + analytics (GA4: _ga, _gid, _ga_*)
-   - Seção 5: Compartilhamento — Correios, Google, operadoras, autoridades
-   - Seção 6: Retenção — tabela com prazos + alerta sobre 5 anos de histórico de compras
-   - Seção 7: Segurança das transações — HTTPS, E2E WhatsApp, bcrypt, sem dados de cartão
-   - Seção 8: Direitos do titular — 8 direitos LGPD art. 18 + alerta de limitação para histórico
-   - Seção 9: Canal de contato — e-mail + WhatsApp + menção à ANPD
-   - Seção 10: Alterações da política
-4. **CTA** — botão WhatsApp
-
-### Regras de negócio críticas aplicadas
-- **Sem CNPJ**: controladora identificada apenas como "Iraná Natural" com e-mail de contato
-- **Google Analytics (GA4)**: cookies _ga, _gid, _ga_* documentados com duração e opt-out via Google
-- **DPO**: não há DPO designado — contato@irananatural.com.br responde por assuntos de privacidade
-- **Retenção de histórico de compras**: mínimo de **5 anos** por defesa em litígios (CPC art. 206) e CDC
-- **Limitação de exclusão**: dados vinculados a histórico de pedidos não podem ser excluídos durante os 5 anos; política explica a limitação e o fundamento legal (LGPD art. 7º, II e V); solicitações respondidas em até 15 dias úteis
-- **Menção à ANPD**: titular pode recorrer à Autoridade Nacional de Proteção de Dados (LGPD art. 18, § 1º)
-
----
-
-## [2026-05-07] Página "Como Comprar"
-
-### Rota
-`GET /como-comprar` → `ComoComprarController@index`
-
-### Arquivos criados
-- `app/Controllers/ComoComprarController.php`
-- `app/Views/como-comprar/index.php`
-
-### Arquivos modificados
-- `index.php` — rota `como-comprar` registrada
-- `app/Views/layouts/default.php` — link "Como Comprar" adicionado ao menu principal e ao rodapé
-- `assets/css/style.css` — estilos das seções: `.passos-grid`, `.pagamento-card`, `.entrega-card` e responsivos
-
-### Estrutura da página
-1. **Hero** — título + breadcrumb (padrão `.page-hero`)
-2. **Passos** — grid 3 colunas com linha conectora decorativa, colapsa em 1 coluna no mobile (≤768px)
-3. **Pagamentos** — 4 cards: PIX, Transferência Bancária, Cartão, Dinheiro
-4. **Entrega** — 4 cards: Correios, Motoboy/Uber Flash, Entrega Local, Retirada Pessoal
-5. **CTA** — botão WhatsApp (reutiliza `.section-cta` existente)
-
-### Regras de negócio aplicadas
-- Processo de compra exclusivamente via WhatsApp (sem carrinho)
-- Pagamentos: PIX, TED/DOC, cartão (link ou maquininha), dinheiro (só retirada)
-- Entrega: Correios (todo Brasil), motoboy/Uber, entrega local e retirada — região Porto Alegre / Grande POA
-- Prazos e valores de frete não fixados na página — combinados pelo WhatsApp
-
----
-
-## [2026-05-07] Páginas Institucionais (5 páginas)
-
-### Rotas criadas
-| Rota | Controller |
+| Componente | Tecnologia |
 |---|---|
-| `GET /seguranca` | `SegurancaController@index` |
-| `GET /envio` | `EnvioController@index` |
-| `GET /pagamento` | `PagamentoController@index` |
-| `GET /garantia` | `GarantiaController@index` |
-| `GET /trocas` | `TrocasController@index` |
-
-### Arquivos criados
-- `app/Controllers/SegurancaController.php`
-- `app/Controllers/EnvioController.php`
-- `app/Controllers/PagamentoController.php`
-- `app/Controllers/GarantiaController.php`
-- `app/Controllers/TrocasController.php`
-- `app/Views/seguranca/index.php`
-- `app/Views/envio/index.php`
-- `app/Views/pagamento/index.php`
-- `app/Views/garantia/index.php`
-- `app/Views/trocas/index.php`
-
-### Arquivos modificados
-- `index.php` — 5 novas rotas registradas
-- `app/Views/layouts/default.php` — nova coluna "Informações" no rodapé com links para as 5 páginas
-- `assets/css/style.css` — classes `.institucional-conteudo`, `.alerta-info`, `.section-institucional`, `.section-institucional-alt`; footer-grid expandido de 3 para 4 colunas
-
-### Regras de negócio aplicadas
-- **Segurança/LGPD**: sem CNPJ — usa apenas "Iraná Natural" e e-mail de contato; dados coletados: telefone/WhatsApp e endereço de entrega
-- **Envio**: Iraná Natural arca com frete de retorno em caso de defeito ou dano no transporte
-- **Pagamento**: cartão de crédito em até 12x (link ou maquininha); dinheiro apenas na retirada
-- **Garantia**: satisfação garantida, análise caso a caso pelo WhatsApp
-- **Trocas**: prazo de 7 dias corridos (CDC); Iraná arca com frete de retorno em caso de defeito; devolução por arrependimento: produto lacrado, frete por conta do cliente
-- **Contato**: página já existia em `/contato` — ignorada nesta implementação
+| Linguagem | PHP 8.x |
+| Banco de dados | MySQL 8.x (PDO, utf8mb4) |
+| Servidor web | Apache + mod_rewrite |
+| Ambiente dev | Laragon (Windows 11) |
+| Hospedagem prod | HostGator (cPanel, Linux, Percona 8.0.45) |
+| Pagamentos | InfinitePay Checkout (API REST) |
+| Frete API | Melhor Envio (JWT, sandbox + produção) |
+| E-mail | PHP `mail()` (SMTP nativo do cPanel) |
+| Frontend | HTML5 + CSS3 + JS vanilla (sem build step) |
+| Tipografia | Google Fonts: Cormorant Garamond + Lato |
 
 ---
 
-## [2026-05-07] Revisão Geral — Páginas Institucionais
+## 5. Estrutura de Pastas
 
-### Problemas encontrados e corrigidos
-
-| # | Severidade | Problema | Correção aplicada |
-|---|---|---|---|
-| 1 | 🔴 Visual | "Como Comprar" duplicado no rodapé (Navegação e Informações) | Removido de `footer-info`; mantido apenas em `footer-links` |
-| 2 | 🔴 Visual | `.alerta-info` invisível dentro de `.section-institucional-alt` (mesma cor de fundo) | Adicionada regra `.section-institucional-alt .alerta-info { background: var(--branco) }` |
-| 3 | 🟠 UX | `.passos-grid` colapsava em 1 coluna em 1024px — tablets têm espaço para 3 colunas | Regra movida de `@media (max-width: 1024px)` para `@media (max-width: 768px)` |
-| 4 | 🟠 Consistência | `seguranca/index.php` era a única página sem CTA ao final | Adicionada `.section-cta` com botão WhatsApp |
-| 5 | 🟡 Copy | CTA em `como-comprar` usava "Fale" (imperativo); outras usam "Falar" (infinitivo) | Padronizado para "Falar pelo WhatsApp" |
-
-### Validações confirmadas ✓
-- Rotas: todas as 6 rotas registradas e operacionais em `index.php`
-- Menus: navbar com 5 links corretos (Início, Produtos, Sobre, Como Comprar, Contato); sem itens duplicados
-- Rodapé: 4 colunas (Marca, Navegação, Informações, Contato); sem duplicações após correção
-- Breadcrumbs: todos corretos e com `aria-label="Trilha de navegação"`
-- SEO: `title`, `description`, `canonical` e Open Graph em todas as 6 páginas
-- Acessibilidade: `aria-hidden` em ícones decorativos; `aria-label` em botões de ação
-- Links externos (WhatsApp): todos com `target="_blank" rel="noopener"`
-- Identidade visual: Cormorant Garamond + Lato, paleta verde/bege/marrom, CSS variables em toda a extensão
-- Responsividade: breakpoints 1024px, 768px, 480px cobrindo todas as novas seções
-
-### Melhorias futuras recomendadas
-1. **Cross-links internos**: adicionar links de "Saiba mais" em "Como Comprar" apontando para `/pagamento` e `/envio`
-2. **robots.txt e sitemap.xml**: criar para garantir indexação correta das novas rotas
-3. **Fontes auto-hospedadas**: substituir Google Fonts por arquivos locais para melhorar LCP e eliminar dependência externa
-4. **Schema.org BreadcrumbList**: adicionar JSON-LD de breadcrumb nas páginas institucionais para enriquecer SERP
-5. **Política de cookies**: se o site crescer e usar analytics, adicionar aviso de cookies integrado à `/seguranca`
-6. **Link "Política de Privacidade" no footer-bottom**: adicionar link para `/seguranca` na barra inferior do rodapé (boa prática legal)
-
----
-
-## [2026-05-07] Auditoria de Resíduos — Limpeza de Arquivos Órfãos
-
-### Escopo
-Auditoria completa de arquivos, pastas, assets, scripts e estruturas não utilizados.
-
-### REMOVIDOS (seguro — confiança alta)
-
-| Arquivo/Pasta | Motivo |
-|---|---|
-| `app/Controllers/SegurancaController.php` | Controlador órfão — rota `/seguranca` removida do `index.php` em implementação anterior; substituído por `PoliticaPrivacidadeController` |
-| `app/Views/seguranca/index.php` + diretório | View órfã — carregada exclusivamente pelo controlador acima; conteúdo superseded por `politica-privacidade/index.php` |
-| `error_log` (raiz) | Log de erros PHP em runtime, 1.885 linhas — não é código do projeto; expõe caminhos absolutos e detalhes do servidor se acessado |
-
-### CORRIGIDO — Bug crítico de imagens
-
-**`assets/images/` estava completamente vazio.** O sistema de templates referencia:
-- `assets/images/logo.png` — header, footer, admin login, admin layout
-- `assets/images/favicon.png` — aba do browser
-- `assets/images/og-default.jpg` — OG:image de fallback para produtos sem foto
-
-**Correções aplicadas:**
-- `assets/img/logo.png` copiado → `assets/images/logo.png`
-- `img/ico/favicon_32x32.png` copiado → `assets/images/favicon.png`
-
-**Pendência:** `assets/images/og-default.jpg` ainda não existe. Criar uma imagem OG de fallback (1200×630px, JPEG) com identidade visual da marca e salvar neste caminho.
-
-### PROTEGIDO — setup/
-
-`setup/.htaccess` criado com `Deny from all` — impede acesso web direto aos scripts de instalação/migração (`install.php`, `migrate_v1_1.php`, `migrate_v1_2.php`). `robots.txt` atualizado com `Disallow: /setup/`.
-
-### SIMPLIFICADO — JS active nav
-
-Bloco "Ativar link de navegação corrente" removido de `assets/js/main.js` (linhas 89–99). Lógica idêntica já existia via closure PHP `$_active()` no `default.php` — remoção elimina redundância e fonte de verdade duplicada.
-
-### PRECISA VALIDAÇÃO MANUAL (não removido automaticamente)
-
-| Arquivo/Pasta | Situação |
-|---|---|
-| `assets/img/` (logo.png, logo1.png) | Nenhuma referência de código aponta para `assets/img/`. Após cópia para `assets/images/`, pode ser removido. |
-| `img/` (raiz — ico/ e logo/) | Nenhuma referência de código. `ico/` tem 8 arquivos de favicon; `logo/` tem 2 logos circulares. Após resolver o og-default.jpg, pode ser removido. |
-
-
----
-
-## [2026-05-07] Correção do Sistema de Imagens e Banner
-
-### Causa raiz identificada
-
-4 problemas distintos, todos com causas estruturais:
-
-| # | Problema | Localização | Causa |
-|---|---|---|---|
-| 1 | Imagens quebradas em dev | `config/app.php` | `APP_URL` hardcoded para `https://irananatural.com.br`; em ambiente local, `Helper::upload()` gera URLs para domínio de produção → browser recebe página PHP de 404 como conteúdo da imagem |
-| 2 | Sem fallback para arquivo ausente | `home/index.php`, `produtos/index.php`, `produtos/show.php` | `<img>` sem `onerror`; quando o arquivo existe no banco mas não no disco, exibe ícone de imagem quebrada ao invés do placeholder |
-| 3 | Banner com slider (errado) | `home/index.php` | Multi-slide com prev/next/dots/animação automática; comportamento correto é banner estático único, sem controles |
-| 4 | Galeria de produto sem navegação | `produtos/show.php` e `main.js` | Galeria de detalhe tinha apenas miniaturas com `onclick` global; sem setas, dots ou suporte a swipe |
-
-### Solução aplicada
-
-**`config/app.php`** — APP_URL dinâmico:
-```php
-if (isset($_SERVER['HTTP_HOST'])) {
-    $scheme = ... ? 'https' : 'http';
-    define('APP_URL', $scheme . '://' . $_SERVER['HTTP_HOST']);
-} else {
-    define('APP_URL', 'https://irananatural.com.br'); // fallback CLI
-}
 ```
-Funciona em dev (localhost/qualquer host) e produção sem configuração adicional.
-
-**`assets/images/placeholder.svg`** — criado SVG neutral com paleta da marca (bege #F5EFE3, stroke #C5B9AA).
-
-**`onerror` em todos os `<img>` de upload**:
-```html
-onerror="this.onerror=null;this.src='/assets/images/placeholder.svg'"
+IranaNatural/
+├── .env                          # Credenciais locais (NUNCA commitado)
+├── .env.example                  # Template de variáveis de ambiente
+├── .gitignore
+├── .htaccess                     # Roteamento + bloqueio de acesso a arquivos
+├── index.php                     # Front controller / roteador
+├── robots.txt
+├── sitemap.xml
+├── projeto.md                    # Este arquivo
+├── admin/
+│   ├── .htaccess
+│   ├── index.php                 # Front controller do admin
+│   ├── Controllers/
+│   │   ├── AdminController.php   # Base dos controllers admin (auth check)
+│   │   ├── AuthController.php    # Login, logout, recuperação de senha
+│   │   ├── DashboardController.php
+│   │   ├── PedidosAdminController.php
+│   │   ├── VendasController.php
+│   │   ├── ConfiguracoesController.php  # Tokens Melhor Envio no banco
+│   │   ├── ClientesAdminController.php
+│   │   ├── ProdutosAdminController.php
+│   │   ├── EstoqueController.php
+│   │   ├── InsumosController.php
+│   │   ├── ProducaoController.php
+│   │   ├── ComprasController.php
+│   │   ├── ImportacaoController.php
+│   │   ├── BannersController.php
+│   │   ├── CategoriasController.php
+│   │   ├── DepoimentosController.php
+│   │   └── WebhookLogsController.php
+│   └── Views/
+├── app/
+│   ├── Controllers/              # Site público
+│   ├── Core/
+│   │   ├── Database.php          # PDO Singleton
+│   │   ├── Router.php
+│   │   ├── Session.php           # CSRF tokens, flash messages
+│   │   ├── Mailer.php            # E-mails HTML transacionais
+│   │   ├── InfinitePayProvider.php
+│   │   ├── WebhookGuard.php      # Rate limit + validação de secret
+│   │   ├── Controller.php
+│   │   ├── Model.php
+│   │   ├── Helper.php
+│   │   ├── CsvParser.php
+│   │   └── XlsxParser.php
+│   ├── Models/
+│   │   ├── Pedido.php            # Criação, status, ciclo completo
+│   │   ├── Venda.php             # Registra venda + estoque + movimentações
+│   │   ├── Carrinho.php
+│   │   ├── Cliente.php
+│   │   ├── Usuario.php           # Admin users (bcrypt)
+│   │   ├── Produto.php
+│   │   ├── EmailLog.php
+│   │   └── ...
+│   ├── Services/
+│   │   ├── FreteService.php      # Orquestra Melhor Envio + opções locais
+│   │   └── MelhorEnvioService.php
+│   └── Views/
+├── assets/
+│   ├── css/style.css
+│   ├── css/admin.css
+│   ├── js/main.js
+│   ├── js/masks.js
+│   └── images/
+├── config/
+│   ├── app.php                   # APP_URL dinâmico, constantes globais
+│   ├── database.php              # Lê DB_* do .env
+│   ├── env.php                   # Loader do .env
+│   ├── frete.php                 # Opções locais de entrega
+│   └── payment.php               # InfinitePay (lê secret do .env)
+├── sql/
+│   ├── schema.sql                # Esquema completo
+│   ├── seed.sql                  # Dados iniciais de demonstração
+│   ├── produtos.sql              # Catálogo de produtos de referência
+│   ├── migration_v1_1.sql ... migration_v6_3_separando.sql
+│   └── setup_inicial.sql
+├── setup/
+│   ├── .htaccess                 # Deny from all — bloqueia acesso web
+│   ├── install.php
+│   ├── migrate_v1_1.php
+│   ├── migrate_v1_2.php
+│   ├── setup_inicial.php
+│   └── importar-insumos/         # Importador CLI de insumos via CSV
+├── tests/
+│   ├── simular_webhook.php       # Simulador de webhooks InfinitePay (CLI)
+│   ├── opcache_reset.php
+│   └── test_log_direto.php
+├── tools/
+│   └── gerar-webhook-secret.php  # Gerador CLI de webhook secret seguro
+└── uploads/
+    └── temp/.htaccess            # Deny from all para temp
 ```
-Cobertura: home destaques, listagem de produtos, galeria principal do produto, miniaturas, produtos relacionados.
 
-**`home/index.php`** — banner simplificado:
-- Removido `banner-slider` com múltiplos slides e JS
-- Novo `.banner-hero` estático: exibe apenas `$banners[0]` sem controles
-- Fallback `hero-default` preservado para quando não há banners cadastrados
+---
 
-**`produtos/show.php`** — galeria de detalhe redesenhada:
-- Setas `#galeria-prev` / `#galeria-next` sobrepostas no `.galeria-main` (apenas se > 1 imagem)
-- `.galeria-dots` com `role="tablist"` e `aria-selected` por dot
-- Miniaturas mantidas para desktop
-- `onclick="trocarImagem(this)"` removido (substituído por event listeners)
+## 6. Fluxos Principais
 
-**`assets/js/main.js`** — limpeza e novo módulo:
-- Removido: IIFE do banner slider (morto)
-- Removido: função global `trocarImagem` (substituída)
-- Adicionado: IIFE `Galeria de produto` com prev/next, dots sync, thumb sync e swipe touch (threshold 40px)
+### 6.1 Fluxo de Compra
 
-**`assets/css/style.css`** — novos estilos:
-- `.banner-hero` — banner estático com `background-size: cover`, alturas responsivas (520/360/300px)
-- `.galeria-prev`, `.galeria-next` — setas sobre `.galeria-main` (position absolute, z-index 5)
-- `.galeria-dot` / `.galeria-dot.active` — indicadores com transição de escala
-- `.galeria-main { position: relative }` e `img { transition: opacity 0.18s }`
-- Media queries atualizadas para `.banner-hero`
+```
+Cliente → Carrinho → Checkout (endereço + frete) → Confirmar
+→ InfinitePayProvider cria link de checkout
+→ Cliente paga em checkout.infinitepay.io
+→ InfinitePay POST /webhook/infinitepay/{secret}
+→ WebhookGuard valida secret + rate limit
+→ WebhookController processa: Venda::registrar() (atômica)
+    ├── registra em vendas
+    ├── atualiza estoque de produtos
+    ├── registra movimentações
+    ├── atualiza status do pedido → pago → separando (v6.3)
+    └── envia 2 e-mails pós-commit (pagamentoConfirmado + statusAtualizado)
+```
 
-### Componentes alterados
+### 6.2 Fluxo de Frete
 
-| Arquivo | Tipo de alteração |
+```
+CEP informado → FreteService::calcular()
+→ MelhorEnvioService::calcular() (API Melhor Envio)
+→ Merge com FRETE_LOCAIS (retirada, Uber, Motoboy)
+→ Opções exibidas ao cliente
+→ Seleção persistida no pedido (transportadora, prazo, valor)
+→ Frete incluído como item separado no payload InfinitePay
+```
+
+### 6.3 Ciclo de Status do Pedido
+
+```
+pendente → pago → separando (automático, webhook v6.3)
+         → enviado → entregue
+         → cancelado | pagamento_recusado | pagamento_expirado
+```
+
+### 6.4 Fluxo de E-mails
+
+```
+Pedido criado:  → cliente (pedidoCliente) + loja (pedidoLoja)
+Pagamento pago: → cliente (pagamentoConfirmado)
+Pago→Separando: → cliente (statusAtualizado: separando)
+Status manual:  → cliente (statusAtualizado: {novoStatus}) se checkbox marcado
+```
+
+---
+
+## 7. Dependências Críticas
+
+| Dependência | Tipo | Impacto se falhar |
+|---|---|---|
+| MySQL / PDO | Infraestrutura | Site inteiro offline |
+| InfinitePay API | Externo | Checkout impossível |
+| InfinitePay Webhook | Externo | Pedidos ficam "pendente" para sempre |
+| Melhor Envio API | Externo | Apenas opções locais de frete disponíveis |
+| PHP mail() | Infraestrutura | Sem notificações de pedido |
+| Google Fonts CDN | Externo | Degradação visual (fallback para Arial/serif) |
+
+---
+
+## 8. Variáveis de Ambiente Necessárias
+
+Copie `.env.example` para `.env` e preencha:
+
+```env
+# Banco de dados
+DB_HOST=localhost
+DB_NAME=***REDACTED_DB_PROD***          # HostGator: prefixo_nome
+DB_USER=***REDACTED_DB_PROD***          # HostGator: prefixo_usuario
+DB_PASS=<senha-forte-aqui>
+
+# InfinitePay
+INFINITEPAY_HANDLE=irananatural     # InfiniteTag sem "$"
+INFINITEPAY_WEBHOOK_SECRET=<256bits-hex>  # Gere com: php tools/gerar-webhook-secret.php
+```
+
+**Tokens Melhor Envio:** configurados no painel admin em `/admin/configuracoes` (armazenados no banco, não em arquivos).
+
+---
+
+## 9. Serviços Externos Integrados
+
+| Serviço | Finalidade | Configuração |
+|---|---|---|
+| InfinitePay Checkout | Pagamentos (PIX + cartão) | `INFINITEPAY_HANDLE` + `INFINITEPAY_WEBHOOK_SECRET` no `.env` |
+| Melhor Envio | Cálculo de frete | Token JWT via `/admin/configuracoes` |
+| Google Fonts | Tipografia web | CDN externo (Cormorant Garamond + Lato) |
+| HostGator / cPanel | Hospedagem + e-mail | cPanel com PHP mail() habilitado |
+
+---
+
+## 10. Estratégia de Autenticação
+
+### Admin (painel)
+- Sessão PHP com `session_regenerate_id()` após login
+- Senhas com `password_hash()` / `password_verify()` (bcrypt, PHP padrão)
+- CSRF token por sessão em todos os formulários POST (`Session::csrfToken()`)
+- Recuperação de senha por token de 1h enviado por e-mail
+- Constante `ADMIN_SESSION` como chave da sessão
+
+### Clientes (site público)
+- Sessão PHP para carrinho e dados do cliente
+- CPF + e-mail + telefone coletados no checkout
+- Opção de cadastro para salvar pedidos (modelo `Cliente`)
+
+### Webhook (InfinitePay)
+- Secret de 256 bits (64 hex) na URL: `POST /webhook/infinitepay/{secret}`
+- `WebhookGuard::gate()` — validação por `hash_equals()` (timing-safe)
+- Rate limiting por IP: máx 20 falhas por 60s (arquivo em sys_get_temp_dir)
+- Idempotência: `transaction_nsu` único em `pagamentos` (constraint DB)
+
+---
+
+## 11. Estratégia de Segurança
+
+### Implementado
+- [x] `.env` fora do git; credenciais carregadas por `config/env.php`
+- [x] Senhas com bcrypt (PHP `password_hash`)
+- [x] CSRF em todos os formulários POST (admin + contato + perfil)
+- [x] Prepared statements em todas as queries SQL (PDO, emulate_prepares=false)
+- [x] `htmlspecialchars()` em todas as saídas de dados do usuário
+- [x] `Options -Indexes` no `.htaccess` (bloqueia listagem de diretórios)
+- [x] Bloqueio de `.env`, `.log`, `.sql`, `.md` via `.htaccess`
+- [x] `setup/` bloqueado por `.htaccess` (Deny from all)
+- [x] `uploads/temp/` bloqueado por `.htaccess`
+- [x] `robots.txt` bloqueia `/admin/`, `/config/`, `/app/`
+- [x] Webhook secret com `hash_equals()` (prevenção de timing attack)
+- [x] Rate limiting de webhook por IP
+- [x] `session_regenerate_id()` após login
+- [x] Erros de banco não expostos ao usuário (logados em error_log)
+
+### Pendente / Recomendado
+- [ ] Habilitar HTTPS redirect no `.htaccess` antes do deploy
+- [ ] Headers de segurança HTTP (CSP, HSTS, X-Frame-Options, X-Content-Type)
+- [ ] Configurar `session.cookie_secure`, `session.cookie_httponly`, `session.cookie_samesite=Strict` no php.ini/cPanel
+- [ ] Rotacionar webhook secret após qualquer commit em repositório remoto
+- [ ] Implementar Content Security Policy para bloquear XSS
+- [ ] Substituir Google Fonts por hospedagem local (elimina dependência CDN externa e melhora privacidade)
+
+---
+
+## 12. Estrutura de Banco de Dados
+
+### Tabelas principais
+
+| Tabela | Descrição |
 |---|---|
-| `config/app.php` | APP_URL dinâmico |
-| `app/Views/home/index.php` | Banner estático + onerror |
-| `app/Views/produtos/index.php` | onerror na listagem |
-| `app/Views/produtos/show.php` | Galeria completa: prev/next/dots/swipe/onerror |
-| `assets/css/style.css` | .banner-hero + galeria nav |
-| `assets/js/main.js` | Remove slider/trocarImagem, adiciona galeria IIFE |
-| `assets/images/placeholder.svg` | Criado — SVG de fallback para imagens ausentes |
+| `usuarios` | Administradores do painel (bcrypt) |
+| `clientes` | Compradores cadastrados |
+| `produtos` | Catálogo de produtos com dimensões e preços |
+| `categorias` | Categorias de produtos |
+| `pedidos` | Pedidos com status, frete, desconto PIX |
+| `pedido_itens` | Itens do pedido (preço já com desconto PIX) |
+| `pagamentos` | Transações InfinitePay (idempotência) |
+| `vendas` | Vendas registradas (trigger do webhook) |
+| `venda_itens` | Itens de venda |
+| `carrinhos` | Carrinhos por sessão/cliente |
+| `carrinho_itens` | Itens do carrinho |
+| `insumos` | Matérias-primas (estoque com custo médio ponderado) |
+| `compras_insumos` | Entradas de insumos |
+| `producao` | Ordens de produção |
+| `ficha_tecnica` | Receituário de produtos (insumo + quantidade) |
+| `mov_produtos` | Movimentações de estoque de produtos acabados |
+| `configuracoes` | Configurações do sistema (KV) — inclui tokens Melhor Envio |
+| `email_logs` | Log de envios de e-mail |
+| `webhook_logs` | Log de webhooks recebidos |
+| `banners` | Banners do carrossel da home |
+| `depoimentos` | Depoimentos de clientes |
+| `recuperacao_senha` | Tokens de recuperação de senha (1h) |
+| `import_history` | Histórico de importações CSV |
 
-### Comportamento após correção
+### Convenção de campos
+- `criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
+- `ativo TINYINT(1) DEFAULT 1`
+- IDs: `INT UNSIGNED NOT NULL AUTO_INCREMENT`
+- Monetário: `DECIMAL(10,2)` (preços) / `DECIMAL(12,6)` (custo médio)
+- Charset: `utf8mb4_unicode_ci`
 
-- **Home banner**: 1 imagem estática, sem controles, sem animação. Fallback gradient se sem banner
-- **Listagem**: card-gallery com prev/next/dots em hover (comportamento inalterado — era correto)
-- **Produto detalhe (1 imagem)**: imagem principal estática, sem setas/dots
-- **Produto detalhe (N imagens)**: seta ← imagem → seta + dots + miniaturas + swipe mobile
-- **Imagem ausente em qualquer página**: placeholder SVG neutro ao invés de ícone quebrado
-- **Ambiente dev**: URLs geradas com `http://localhost` (ou host atual), não mais `https://irananatural.com.br`
+---
 
-### Melhorias futuras recomendadas
+## 13. Rotas / Endpoints Principais
 
-1. **Lazy loading na galeria de detalhe**: pré-carregar imagem seguinte em background para transição sem flash
-2. **Zoom na imagem principal**: modal ou zoom in-place ao clicar (melhora UX desktop)
-3. **Aspect ratio automático**: galeria adaptar altura conforme dimensão real das imagens (evitar crop agressivo em imagens não-quadradas)
-4. **WebP**: converter uploads para WebP no upload via admin (redução de 30-40% do tamanho)
-5. **og-default.jpg**: criar imagem OG de fallback 1200×630 com identidade visual para produtos sem foto
+### Site público (index.php)
+```
+GET  /                          HomeController::index
+GET  /produtos                  ProdutosController::index
+GET  /produtos/{cat}/{slug}     ProdutosController::show
+GET  /carrinho                  CarrinhoController::index
+POST /carrinho/adicionar        CarrinhoController::adicionar
+POST /carrinho/remover          CarrinhoController::remover
+POST /carrinho/atualizar        CarrinhoController::atualizar
+POST /frete/calcular            FreteController::calcular
+GET  /checkout/endereco         CheckoutController::endereco
+POST /checkout/endereco         CheckoutController::salvarEndereco
+GET  /checkout/confirmar        CheckoutController::confirmar
+POST /checkout/finalizar        CheckoutController::finalizar
+GET  /checkout/sucesso          CheckoutController::sucesso
+GET  /checkout/aguardando       CheckoutController::aguardando
+POST /webhook/infinitepay/{secret}  WebhookController::infinitepay
+GET  /minha-conta               ClienteController::painel
+GET  /minha-conta/editar        ClienteController::editar
+POST /minha-conta/editar        ClienteController::salvar
+GET  /contato                   ContatoController::index
+POST /contato/enviar            ContatoController::enviar
+GET  /como-comprar              ComoComprarController::index
+GET  /pagamento                 PagamentoController::index
+GET  /envio                     EnvioController::index
+GET  /garantia                  GarantiaController::index
+GET  /trocas                    TrocasController::index
+GET  /sobre                     SobreController::index
+GET  /politica-privacidade      PoliticaPrivacidadeController::index
+```
 
+### Painel admin (admin/index.php)
+```
+GET/POST /admin/login
+GET      /admin/dashboard
+GET      /admin/pedidos           Lista de pedidos
+GET      /admin/pedidos/{id}      Ver pedido + timeline de status
+POST     /admin/pedidos/{id}/status    Atualizar status
+GET      /admin/vendas            Lista de vendas
+GET      /admin/clientes          CRUD de clientes
+GET      /admin/produtos          CRUD de produtos
+GET      /admin/estoque           Movimentações
+GET      /admin/insumos           CRUD de insumos
+GET      /admin/producao          Ordens de produção
+GET      /admin/compras           Compras de insumos
+GET      /admin/configuracoes     Tokens, configurações gerais
+GET      /admin/webhook-logs      Logs de webhooks recebidos
+GET      /admin/importacao        Importação de insumos CSV/XLSX
+```
+
+---
+
+## 14. Status Atual do Desenvolvimento
+
+**Versão:** 6.3 — Fluxo automático pago→separando + e-mails pós-commit
+
+### Funcionalidades implementadas e operacionais
+- [x] Catálogo de produtos com categorias e galeria de imagens
+- [x] Carrinho de compras (sessão + banco)
+- [x] Checkout completo (endereço, frete, pagamento)
+- [x] Integração InfinitePay Checkout (link de pagamento)
+- [x] Webhook InfinitePay com idempotência e transação atômica
+- [x] Desconto PIX 5% por unidade (aplicado no item, não no subtotal)
+- [x] Cálculo de frete via Melhor Envio + opções locais
+- [x] E-mails automáticos (pedido criado, pagamento confirmado, status atualizado)
+- [x] Fluxo automático pago→separando via webhook
+- [x] Painel admin completo (pedidos, vendas, clientes, produtos, estoque, insumos, produção)
+- [x] Histórico de status de pedidos com timeline
+- [x] Gestão de clientes (CRUD admin + edição pelo próprio cliente)
+- [x] Sistema de usuários admin com recuperação de senha
+- [x] Importador CLI de insumos (CSV)
+- [x] Módulo de produção (ficha técnica, ordens de produção)
+- [x] Páginas institucionais (sobre, contato, como comprar, pagamento, envio, garantia, trocas, política de privacidade)
+- [x] robots.txt + sitemap.xml
+- [x] CSRF em todos os formulários
+- [x] WebhookGuard (rate limiting + timing-safe validation)
+- [x] Recuperação de senha admin por e-mail com token de 1h
+- [x] Logs de webhook e e-mail
+
+---
+
+## 15. Pendências Técnicas
+
+- [ ] **Habilitar HTTPS no `.htaccess`** antes do deploy (2 linhas comentadas)
+- [ ] **Adicionar headers HTTP de segurança** (CSP, HSTS, X-Frame-Options via `.htaccess` ou cPanel)
+- [ ] **Configurar sessões seguras** (`session.cookie_secure=1`, `cookie_httponly=1`, `samesite=Strict`) — fazer via `php.ini` no cPanel ou `session_set_cookie_params()` em `Session.php`
+- [ ] **og:image por produto** — imagens Open Graph específicas (atualmente usa `og-default.jpg` genérico)
+- [ ] **Lazy loading** nas imagens de produto
+- [ ] **Tokens Melhor Envio de produção** — cadastrar no painel `/admin/configuracoes`
+- [ ] **Webhook InfinitePay de produção** — registrar URL com secret real no dashboard InfinitePay
+- [ ] **Substituir Google Fonts** por hospedagem local (LGPD + performance)
+- [ ] **Fontes auto-hospedadas** para eliminar dependência CDN
+
+---
+
+## 16. Débitos Técnicos
+
+- **MVC artesanal** — sem framework; aumenta manutenção a longo prazo
+- **PHP mail()** — sem retry, sem fila, sem confirmação de entrega; e-mails podem ser dropados silenciosamente
+- **WebhookGuard rate limit em arquivo** — `sys_get_temp_dir()` pode ser limpo pelo SO; usar APCu ou Redis em produção escalável
+- **Sem paginação** em algumas listas admin (pode ficar lento com volume alto)
+- **Sem cache** — cada request recalcula tudo (sem OPcache configurado para produção ainda)
+- **Google Analytics** mencionado na política de privacidade mas não implementado no site
+- **Frete calculado por CEP** — prazo e dimensões dependem de produtos cadastrados corretamente
+
+---
+
+## 17. Melhorias Recomendadas
+
+1. **Headers de segurança HTTP** — adicionar ao `.htaccess`:
+   ```apache
+   Header always set X-Frame-Options "SAMEORIGIN"
+   Header always set X-Content-Type-Options "nosniff"
+   Header always set Referrer-Policy "strict-origin-when-cross-origin"
+   Header always set X-XSS-Protection "1; mode=block"
+   ```
+2. **Content Security Policy** — definir política CSP estrita
+3. **Sessões seguras** — `cookie_secure=1`, `httponly=1`, `samesite=Strict`
+4. **Fila de e-mail** — implementar tabela de fila para reenvio em falha
+5. **WebP** — converter uploads para WebP no processamento (30-40% menor)
+6. **Sitemap dinâmico** — incluir URLs de produtos individuais
+7. **Schema.org** — JSON-LD de `Product`, `BreadcrumbList`, `Organization`
+8. **Lazy loading nativo** — `loading="lazy"` nas imagens de produto
+9. **Substituir Google Fonts** por arquivos locais (LGPD + LCP)
+
+---
+
+## 18. Riscos Identificados
+
+| Risco | Nível | Mitigação |
+|---|---|---|
+| Deploy sem HTTPS ativo | Alto | Habilitar redirect no `.htaccess` antes do go-live |
+| Tokens Melhor Envio em BD sem criptografia | Médio | Tokens ficam em clear text na tabela `configuracoes`; mitigar com acesso restrito ao BD |
+| PHP mail() sem SPF/DKIM | Médio | E-mails podem cair em spam; configurar SPF/DKIM no cPanel |
+| Google Fonts CDN (LGPD) | Baixo | Usuários EU podem ter IP exposto ao Google; mitigar com self-hosting |
+| Sem rate limiting no checkout | Médio | Bot pode criar muitos pedidos; adicionar captcha ou rate limit por IP |
+| Webhook secret na URL (path) | Baixo-Médio | Pode aparecer em logs Apache; usar header X-Signature como alternativa futura |
+| Scripts de teste acessíveis via web | Médio | `tests/*.php` não bloqueados por `.htaccess`; adicionar proteção |
+
+---
+
+## 19. Checklist de Segurança
+
+### Credenciais e secrets
+- [x] `.env` no `.gitignore`, nunca commitado
+- [x] `config/database_local.php` removido do rastreamento git
+- [x] Credenciais do banco carregadas de variáveis de ambiente
+- [x] Webhook secret carregado do `.env` (256 bits)
+- [x] Senhas de usuário armazenadas com bcrypt
+- [ ] Rotacionar `INFINITEPAY_WEBHOOK_SECRET` se repositório foi ou será publicado
+- [ ] Rotacionar senha do banco HostGator se repositório foi publicado
+
+### Controle de acesso
+- [x] Painel admin protegido por sessão
+- [x] CSRF em todos os formulários POST
+- [x] `Options -Indexes` (sem listagem de diretórios)
+- [x] `setup/` bloqueado por `.htaccess`
+- [ ] `tests/` deve ser bloqueado por `.htaccess` em produção
+- [ ] Headers de segurança HTTP (CSP, HSTS, X-Frame-Options)
+- [ ] Sessões com `cookie_secure`, `cookie_httponly`, `samesite`
+
+### Dados e privacidade
+- [x] Prepared statements em todas as queries
+- [x] `htmlspecialchars()` em todas as saídas
+- [x] Logs de pagamento fora do git
+- [x] Política de privacidade publicada (LGPD)
+- [ ] Logs de produção nunca commitados (adicionar `logs/` ao monitoramento)
+
+---
+
+## 20. Checklist Pré-Deploy (Produção)
+
+- [ ] Criar `.env` no servidor com credenciais de produção (HostGator)
+- [ ] Rodar migrations pendentes: `migration_v6_1_email.sql`, `v6_2_historico.sql`, `v6_3_separando.sql`
+- [ ] Cadastrar tokens Melhor Envio de produção em `/admin/configuracoes`
+- [ ] Gerar novo webhook secret: `php tools/gerar-webhook-secret.php`
+- [ ] Registrar URL do webhook no dashboard InfinitePay: `https://irananatural.com.br/webhook/infinitepay/{secret}`
+- [ ] Habilitar HTTPS redirect no `.htaccess` (descomentar 2 linhas)
+- [ ] Adicionar headers de segurança HTTP no `.htaccess` ou cPanel
+- [ ] Configurar `session.cookie_secure=1` no cPanel PHP Settings
+- [ ] Verificar que `upload_max_filesize` e `post_max_size` estão adequados no cPanel
+- [ ] Testar envio de e-mail com `mail()` no HostGator (SPF/DKIM configurados)
+- [ ] Verificar permissões de pastas: `uploads/` precisa de escrita
+- [ ] Bloquear `tests/` por `.htaccess` em produção
+- [ ] Remover ou bloquear acesso a `tools/` em produção
+- [ ] Testar fluxo completo de compra em produção com valor mínimo
+- [ ] Confirmar que webhook responde 200 OK com body `{"ok":true}`
+- [ ] Verificar logs de erro no cPanel após primeira compra
+
+---
+
+## 21. Checklist Pré-Commit
+
+- [ ] Nenhum arquivo `.env` no staging (`git status | grep .env`)
+- [ ] `config/database_local.php` **NÃO** no staging
+- [ ] Sem credenciais hardcoded em arquivos PHP (grep por senhas/tokens)
+- [ ] Sem dumps SQL com dados reais (`sql/SiteIrana_*.sql` no `.gitignore`)
+- [ ] Sem arquivos de log no staging (`logs/` no `.gitignore`)
+- [ ] Sem uploads de usuário no staging (`uploads/` no `.gitignore`)
+- [ ] `.gitignore` commitado e atualizado
+- [ ] `projeto.md` refletindo estado atual
+
+---
+
+## 22. Comandos Git de Correção de Segurança
+
+Se o repositório remoto (GitHub) contiver commits com dados sensíveis, executar:
+
+```bash
+# Verificar arquivos sensíveis no histórico
+git log --all --full-history -- "*.env" "config/database_local.php" "logs/*.log"
+
+# Remover arquivo sensível do HISTÓRICO COMPLETO (requer BFG ou git filter-repo)
+# ATENÇÃO: Reescreve o histórico — coordenar com toda a equipe antes
+pip install git-filter-repo
+git filter-repo --path logs/infinitepay.log --invert-paths
+git filter-repo --path config/database_local.php --invert-paths
+
+# Após reescrita, forçar push (CUIDADO: irreversível no remoto)
+git push origin --force --all
+
+# ALTERNATIVA SEGURA: Rotacionar as credenciais expostas
+# Não requer reescrita do histórico se as credenciais foram trocadas
+```
+
+---
+
+## 23. Arquivos que NÃO devem ir ao GitHub
+
+| Arquivo | Motivo |
+|---|---|
+| `.env` | Credenciais reais do banco e InfinitePay |
+| `config/database_local.php` | Senha hardcoded do banco local |
+| `logs/*.log` | Logs de transações (PII: nome, e-mail, endereço, CPF) |
+| `sql/SiteIrana_*.sql` | Dumps com IP de produção e nome do banco |
+| `uploads/` | Imagens de produtos (arquivos grandes, não são código) |
+
+---
+
+*Documento gerado por auditoria de segurança em 2026-05-11.*
+*Próxima revisão recomendada: antes de cada deploy em produção.*

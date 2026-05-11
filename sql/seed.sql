@@ -1,7 +1,7 @@
 -- =====================================================
 -- Iraná Natural — Dados iniciais de demonstração
 -- Execute APÓS schema.sql
--- Senha do admin: Iran@2024
+-- Usuário admin criado via setup/install.php (nunca commitar senha real aqui)
 -- =====================================================
 
 SET NAMES utf8mb4;

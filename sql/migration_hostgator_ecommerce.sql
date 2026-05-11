@@ -294,4 +294,107 @@ ALTER TABLE `pedidos`
     ADD COLUMN IF NOT EXISTS codigo_transportadora INT UNSIGNED NULL DEFAULT NULL  AFTER prazo_entrega,
     ADD COLUMN IF NOT EXISTS resp_entrega_cliente  TINYINT(1)   NOT NULL DEFAULT 0 AFTER codigo_transportadora;
 
-SELECT 'migration_hostgator_ecommerce (v2.0 → v6.0) concluida com sucesso!' AS status;
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 15. CONFIGURAÇÕES — seeds para o módulo de frete (migration_v6_0)
+-- ─────────────────────────────────────────────────────────────────────────────
+INSERT IGNORE INTO configuracoes (chave, valor, descricao) VALUES
+    ('frete_ativo',          '1',        'Cálculo de frete via Melhor Envio habilitado (1=sim, 0=não)'),
+    ('frete_sandbox',        '1',        'Ambiente Melhor Envio: 1=sandbox (testes), 0=produção'),
+    ('frete_cep_origem',     '92110060', 'CEP de origem da loja (8 dígitos, sem hífen)'),
+    ('frete_timeout',        '15',       'Timeout da API Melhor Envio em segundos'),
+    ('frete_services',       '1,2,9,10', 'IDs dos serviços ME habilitados: 1=PAC,2=SEDEX,9=Jadlog.Package,10=Jadlog.Com'),
+    ('frete_token_sandbox',  '',         'Token JWT Melhor Envio — ambiente sandbox (sandbox.melhorenvio.com.br)'),
+    ('frete_token_producao', '',         'Token JWT Melhor Envio — ambiente produção (app.melhorenvio.com.br)'),
+    ('frete_ssl_verify',    '1',        'Verificar SSL nas chamadas à API Melhor Envio (0=desativar em ambiente local sem CA bundle)');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 16. TOKENS DE RECUPERAÇÃO DE SENHA — painel admin (migration_v7_0)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `tokens_senha_admin` (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    usuario_id  INT UNSIGNED NOT NULL,
+    token       VARCHAR(64)  NOT NULL,
+    expira_em   DATETIME     NOT NULL,
+    usado       TINYINT(1)   NOT NULL DEFAULT 0,
+    criado_em   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY  uk_token     (token),
+    INDEX       idx_usuario  (usuario_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tokens temporários para recuperação de senha do painel administrativo';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 17. PEDIDOS — flags de controle de e-mail (migration_v6_1)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `pedidos`
+    ADD COLUMN IF NOT EXISTS email_pedido_enviado TINYINT(1) NOT NULL DEFAULT 0
+        COMMENT 'E-mail de confirmação de criação do pedido enviado ao cliente' AFTER resp_entrega_cliente,
+    ADD COLUMN IF NOT EXISTS email_pago_enviado   TINYINT(1) NOT NULL DEFAULT 0
+        COMMENT 'E-mail de confirmação de pagamento enviado ao cliente' AFTER email_pedido_enviado;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 18. EMAIL_LOGS — auditoria de envios de e-mail (migration_v6_1)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `email_logs` (
+    `id`           INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    `tipo`         VARCHAR(50)      NOT NULL COMMENT 'pedido_criado_cliente | pedido_criado_loja | pago_cliente',
+    `pedido_id`    INT UNSIGNED     NOT NULL DEFAULT 0,
+    `destinatario` VARCHAR(255)     NOT NULL,
+    `assunto`      VARCHAR(255)     NOT NULL,
+    `status`       ENUM('enviado','falhou') NOT NULL DEFAULT 'enviado',
+    `erro`         TEXT             NULL,
+    `criado_em`    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_el_pedido` (`pedido_id`),
+    INDEX `idx_el_tipo`   (`tipo`),
+    INDEX `idx_el_status` (`status`),
+    INDEX `idx_el_data`   (`criado_em`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 19. PEDIDOS_HISTORICO — campos de auditoria estruturada (migration_v6_2)
+-- ─────────────────────────────────────────────────────────────────────────────
+DROP PROCEDURE IF EXISTS _add_historico_v62_cols;
+DELIMITER //
+CREATE PROCEDURE _add_historico_v62_cols()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'pedidos_historico'
+          AND COLUMN_NAME  = 'status_anterior'
+    ) THEN
+        ALTER TABLE `pedidos_historico`
+            ADD COLUMN `status_anterior` VARCHAR(50)  NULL    AFTER `status`,
+            ADD COLUMN `admin_id`        INT UNSIGNED NULL    AFTER `observacao`,
+            ADD COLUMN `admin_nome`      VARCHAR(100) NULL    AFTER `admin_id`,
+            ADD COLUMN `origem`          ENUM('sistema','admin','webhook') NOT NULL DEFAULT 'sistema' AFTER `admin_nome`;
+    END IF;
+END //
+DELIMITER ;
+CALL _add_historico_v62_cols();
+DROP PROCEDURE IF EXISTS _add_historico_v62_cols;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 20. PEDIDOS — flag idempotência e-mail Em Separação (migration_v6_3)
+-- ─────────────────────────────────────────────────────────────────────────────
+DROP PROCEDURE IF EXISTS _add_email_separando_col;
+DELIMITER //
+CREATE PROCEDURE _add_email_separando_col()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'pedidos'
+          AND COLUMN_NAME  = 'email_separando_enviado'
+    ) THEN
+        ALTER TABLE `pedidos`
+            ADD COLUMN `email_separando_enviado` TINYINT(1) NOT NULL DEFAULT 0
+                COMMENT 'E-mail automático de Em Separação enviado ao cliente';
+    END IF;
+END //
+DELIMITER ;
+CALL _add_email_separando_col();
+DROP PROCEDURE IF EXISTS _add_email_separando_col;
+
+SELECT 'migration_hostgator_ecommerce (v2.0 → v10.0) concluida com sucesso!' AS status;

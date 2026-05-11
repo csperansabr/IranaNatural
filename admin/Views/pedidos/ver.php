@@ -124,6 +124,54 @@
         </div>
         <?php endif; ?>
 
+        <!-- Histórico de status -->
+        <?php if (!empty($historico)): ?>
+        <div class="adm-card" style="margin-bottom:1.5rem;">
+            <div class="adm-card-header"><h3>Histórico de status</h3></div>
+            <div style="padding:16px 20px;">
+                <ol style="list-style:none;padding:0;margin:0;position:relative;">
+                    <?php foreach ($historico as $entrada): ?>
+                    <?php
+                        $ehAdmin   = $entrada['origem'] === 'admin';
+                        $ehWebhook = $entrada['origem'] === 'webhook';
+                        $corBorda  = $ehAdmin ? '#2C5F2E' : ($ehWebhook ? '#2980b9' : '#8A7A6A');
+                    ?>
+                    <li style="display:flex;gap:14px;align-items:flex-start;margin-bottom:1.1rem;">
+                        <div style="flex-shrink:0;width:12px;height:12px;border-radius:50%;background:<?= $corBorda ?>;margin-top:4px;box-shadow:0 0 0 3px <?= $corBorda ?>22;"></div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+                                <span class="adm-status adm-status--<?= htmlspecialchars($entrada['status'], ENT_QUOTES, 'UTF-8') ?>" style="font-size:11px;padding:2px 8px;">
+                                    <?= \App\Models\Pedido::statusLabel($entrada['status']) ?>
+                                </span>
+                                <?php if (!empty($entrada['status_anterior'])): ?>
+                                <span style="font-size:11px;color:#8A7A6A;">
+                                    ← <?= \App\Models\Pedido::statusLabel($entrada['status_anterior']) ?>
+                                </span>
+                                <?php endif; ?>
+                            </div>
+                            <div style="font-size:11px;color:#8A7A6A;margin-bottom:3px;">
+                                <?= htmlspecialchars(\App\Core\Helper::datetime($entrada['criado_em']), ENT_QUOTES, 'UTF-8') ?>
+                                <?php if (!empty($entrada['admin_nome'])): ?>
+                                &middot; por <strong><?= htmlspecialchars($entrada['admin_nome'], ENT_QUOTES, 'UTF-8') ?></strong>
+                                <?php elseif ($ehWebhook): ?>
+                                &middot; InfinitePay (webhook)
+                                <?php else: ?>
+                                &middot; Sistema
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($entrada['observacao'])): ?>
+                            <p style="margin:0;font-size:13px;color:#5A4E40;line-height:1.5;word-break:break-word;">
+                                <?= htmlspecialchars($entrada['observacao'], ENT_QUOTES, 'UTF-8') ?>
+                            </p>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                    <?php endforeach; ?>
+                </ol>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
     <!-- Sidebar -->
@@ -252,6 +300,7 @@
             <div class="adm-card-header"><h3>Atualizar Status</h3></div>
             <div style="padding:16px 20px;">
                 <form id="form-status">
+                    <input type="hidden" name="_csrf" value="<?= \App\Core\Session::csrfToken() ?>">
                     <input type="hidden" name="pedido_id" value="<?= $pedido['id'] ?>">
 
                     <div class="adm-form-group" style="margin-bottom:12px;">
@@ -265,15 +314,23 @@
                         </select>
                     </div>
 
-                    <div class="adm-form-group" style="margin-bottom:16px;">
+                    <div class="adm-form-group" style="margin-bottom:12px;">
                         <label class="adm-label">Observação (opcional)</label>
-                        <textarea name="obs" class="adm-input" rows="2" placeholder="Ex: Código de rastreio: BR12345678"></textarea>
+                        <textarea name="obs" class="adm-input" rows="3" placeholder="Ex: Código de rastreio: BR12345678&#10;Esta informação será exibida no histórico e no e-mail ao cliente."></textarea>
+                    </div>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 12px;background:#f5f9f2;border:1px solid #b5c99a;border-radius:6px;">
+                        <input type="checkbox" name="notificar_cliente" value="1" id="chk-notificar" checked style="width:16px;height:16px;accent-color:#2C5F2E;cursor:pointer;">
+                        <label for="chk-notificar" style="margin:0;font-size:13px;color:#2A2218;cursor:pointer;line-height:1.3;">
+                            Notificar cliente por e-mail<br>
+                            <span style="font-size:11px;color:#8A7A6A;font-weight:normal;">(inclui observação se preenchida)</span>
+                        </label>
                     </div>
 
                     <button type="button" class="adm-btn adm-btn-primary adm-btn-block" id="btn-status">
                         Salvar status
                     </button>
-                    <div id="status-feedback" style="margin-top:8px; font-size:13px;"></div>
+                    <div id="status-feedback" style="margin-top:10px; font-size:13px; line-height:1.4;"></div>
                 </form>
             </div>
         </div>
@@ -287,31 +344,43 @@
 
 <script>
 document.getElementById('btn-status')?.addEventListener('click', async function () {
-    const form   = document.getElementById('form-status');
-    const fd     = new FormData(form);
-    const btn    = this;
+    const form     = document.getElementById('form-status');
+    const fd       = new FormData(form);
+    const btn      = this;
     const feedback = document.getElementById('status-feedback');
 
     btn.disabled    = true;
     btn.textContent = 'Salvando…';
     feedback.textContent = '';
+    feedback.style.color = '';
 
     try {
         const res  = await fetch('/admin/pedidos/status', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.ok) {
-            feedback.style.color  = '#2C5F2E';
-            feedback.textContent  = '✓ ' + data.msg;
+            feedback.style.color = '#2C5F2E';
+            feedback.textContent = '✓ ' + data.msg;
+
+            // Atualiza badge: texto + classe CSS
             const badge = document.querySelector('.adm-status');
-            if (badge) badge.textContent = data.label;
+            if (badge && data.label) {
+                badge.textContent = data.label;
+                // Remove classes de status anteriores e adiciona a nova
+                badge.className = badge.className.replace(/adm-status--\S+/g, '').trim();
+                if (data.class) badge.classList.add(data.class);
+            }
+
+            // Recarrega a página após 1,2s para atualizar o histórico e o formulário
+            setTimeout(() => window.location.reload(), 1200);
         } else {
-            feedback.style.color  = '#c0392b';
-            feedback.textContent  = '✗ ' + (data.msg || 'Erro ao atualizar.');
+            feedback.style.color = '#c0392b';
+            feedback.textContent = '✗ ' + (data.msg || 'Erro ao atualizar.');
+            btn.disabled    = false;
+            btn.textContent = 'Salvar status';
         }
     } catch (e) {
         feedback.style.color = '#c0392b';
-        feedback.textContent = '✗ Erro de comunicação.';
-    } finally {
+        feedback.textContent = '✗ Erro de comunicação. Tente novamente.';
         btn.disabled    = false;
         btn.textContent = 'Salvar status';
     }

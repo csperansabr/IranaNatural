@@ -129,7 +129,7 @@
             <p>Quando a garantia é aprovada, a solução é definida em conjunto com o cliente, conforme o CDC art. 18:</p>
             <ul>
                 <li><strong>Troca</strong> — envio de um produto equivalente em substituição ao defeituoso, com frete por conta da Iraná Natural;</li>
-                <li><strong>Reembolso</strong> — devolução do valor pago pelo produto via PIX ou TED, no prazo combinado pelo WhatsApp.</li>
+                <li><strong>Reembolso</strong> — devolução do valor pago pelo produto via PIX, no prazo combinado pelo WhatsApp.</li>
             </ul>
             <p>A escolha entre troca e reembolso é feita caso a caso, considerando a disponibilidade do produto em estoque e a preferência do cliente. Para solicitações de devolução por arrependimento ou outros motivos, consulte nossa <a href="<?= APP_URL ?>/trocas">política de trocas e devoluções</a>.</p>
 
