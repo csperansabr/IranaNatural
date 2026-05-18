@@ -37,9 +37,13 @@
                     <span class="adm-badge adm-badge-gray">Inativo</span>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td style="white-space:nowrap">
                     <a href="/admin/insumos/<?= $ins['id'] ?>/editar" class="adm-btn adm-btn-secondary adm-btn-sm">Editar</a>
                     <a href="/admin/compras/nova" class="adm-btn adm-btn-warning adm-btn-sm" title="Registrar compra deste insumo">🛒</a>
+                    <form method="POST" action="/admin/insumos/<?= $ins['id'] ?>/excluir" style="display:inline"
+                          onsubmit="return confirm('Excluir o insumo &quot;<?= htmlspecialchars($ins['nome'], ENT_QUOTES, 'UTF-8') ?>&quot;? Esta ação é irreversível.')">
+                        <button type="submit" class="adm-btn adm-btn-danger adm-btn-sm">Excluir</button>
+                    </form>
                 </td>
             </tr>
             <?php endforeach; ?>

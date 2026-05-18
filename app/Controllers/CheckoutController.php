@@ -230,6 +230,7 @@ class CheckoutController extends Controller
             $totalComFrete = round($subtotal + $freteValor, 2);
             (new Pagamento())->criar($pedidoId, [
                 'order_nsu'      => $pedido['numero'],
+                'handle'         => $ipResponse['_request_payload']['handle'] ?? INFINITEPAY_HANDLE,
                 'invoice_slug'   => $ipResponse['invoice_slug'] ?? null,
                 'checkout_url'   => $ipResponse['checkout_url'],
                 'metodo'         => 'pendente',

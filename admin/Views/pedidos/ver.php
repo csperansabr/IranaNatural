@@ -258,6 +258,19 @@
                     </a>
                 </div>
                 <?php endif; ?>
+
+                <?php $statusTerminais = ['pago','separando','enviado','entregue','cancelado']; ?>
+                <div style="padding-top:12px; border-top:1px solid #e8e0d8; margin-top:8px;">
+                    <button type="button" id="btn-consultar-pagamento"
+                        data-pedido="<?= $pedido['id'] ?>"
+                        data-csrf="<?= \App\Core\Session::csrfToken() ?>"
+                        class="adm-btn adm-btn-sm adm-btn-secondary adm-btn-block"
+                        style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></svg>
+                        Consultar status na InfinitePay
+                    </button>
+                    <div id="consultar-feedback" style="margin-top:8px; font-size:12px; line-height:1.4; display:none;"></div>
+                </div>
             </div>
         </div>
         <?php endif; ?>
@@ -342,7 +355,51 @@
     <a href="/admin/pedidos" class="adm-btn adm-btn-secondary">← Voltar aos pedidos</a>
 </div>
 
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <script>
+document.getElementById('btn-consultar-pagamento')?.addEventListener('click', async function () {
+    const btn      = this;
+    const feedback = document.getElementById('consultar-feedback');
+    const pedidoId = btn.dataset.pedido;
+    const csrf     = btn.dataset.csrf;
+
+    btn.disabled    = true;
+    btn.innerHTML   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Consultando…';
+    feedback.style.display  = 'none';
+    feedback.textContent    = '';
+
+    try {
+        const fd = new FormData();
+        fd.append('_csrf', csrf);
+
+        const res  = await fetch('/admin/pedidos/' + pedidoId + '/consultar-pagamento', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        feedback.style.display = 'block';
+        if (data.ok) {
+            feedback.style.color = data.reload ? '#2C5F2E' : '#5A4E40';
+            feedback.textContent = '✓ ' + data.msg;
+            if (data.reload) {
+                setTimeout(() => window.location.reload(), 1800);
+            } else {
+                btn.disabled  = false;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></svg> Consultar status na InfinitePay';
+            }
+        } else {
+            feedback.style.color = '#c0392b';
+            feedback.textContent = '✗ ' + (data.msg || 'Erro ao consultar.');
+            btn.disabled  = false;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></svg> Consultar status na InfinitePay';
+        }
+    } catch (e) {
+        feedback.style.display = 'block';
+        feedback.style.color   = '#c0392b';
+        feedback.textContent   = '✗ Erro de comunicação. Tente novamente.';
+        btn.disabled  = false;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14"><path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></svg> Consultar status na InfinitePay';
+    }
+});
+
 document.getElementById('btn-status')?.addEventListener('click', async function () {
     const form     = document.getElementById('form-status');
     const fd       = new FormData(form);

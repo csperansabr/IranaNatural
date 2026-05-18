@@ -95,4 +95,12 @@ class Insumo extends Model
             [$id, $limit]
         );
     }
+
+    public function contarVinculos(int $id): array
+    {
+        $compras = (int)($this->query("SELECT COUNT(*) AS n FROM compras_insumos WHERE insumo_id = ?", [$id])[0]['n'] ?? 0);
+        $fichas  = (int)($this->query("SELECT COUNT(*) AS n FROM fichas_tecnicas WHERE insumo_id = ?", [$id])[0]['n'] ?? 0);
+        $movs    = (int)($this->query("SELECT COUNT(*) AS n FROM mov_insumos WHERE insumo_id = ?", [$id])[0]['n'] ?? 0);
+        return compact('compras', 'fichas', 'movs');
+    }
 }

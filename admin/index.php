@@ -108,6 +108,11 @@ if ($module === 'pedidos' && $seg1 === 'status' && $method === 'POST') {
     $ctrl->atualizarStatus(); exit;
 }
 
+// /admin/pedidos/{id}/consultar-pagamento (AJAX POST)
+if ($module === 'pedidos' && is_numeric($seg1) && $seg2 === 'consultar-pagamento' && $method === 'POST') {
+    $ctrl->consultarPagamento((int)$seg1); exit;
+}
+
 // /admin/ ou /admin/dashboard
 if ($seg1 === null || $seg1 === '') {
     $ctrl->index(); exit;

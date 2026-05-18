@@ -105,6 +105,61 @@ class InfinitePayProvider
         return $data;
     }
 
+    /**
+     * Query InfinitePay for the current payment status of an order.
+     *
+     * Used by admins to manually trigger a status check when the webhook
+     * failed or was delayed. Returns the raw API response array.
+     */
+    public function consultarStatus(string $handle, string $orderNsu, string $transactionNsu, string $slug): array
+    {
+        $payload = [
+            'handle'          => $handle,
+            'order_nsu'       => $orderNsu,
+            'transaction_nsu' => $transactionNsu,
+            'slug'            => $slug,
+        ];
+
+        $json     = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $endpoint = INFINITEPAY_API_URL . '/payment_check';
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $json,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Accept: application/json'],
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        $this->log([
+            'event'           => 'payment_check',
+            'order_nsu'       => $orderNsu,
+            'transaction_nsu' => $transactionNsu ?: null,
+            'http_code'       => $httpCode,
+            'curl_error'      => $curlErr ?: null,
+            'response'        => $response,
+        ]);
+
+        if ($curlErr) {
+            throw new \RuntimeException('Erro de conexão com InfinitePay: ' . $curlErr);
+        }
+
+        $data = json_decode($response, true) ?? [];
+
+        if ($httpCode < 200 || $httpCode >= 300) {
+            throw new \RuntimeException('InfinitePay retornou HTTP ' . $httpCode . ': ' . $response);
+        }
+
+        return $data;
+    }
+
     private function buildCustomer(array $cliente, array $endereco): array
     {
         $customer = [

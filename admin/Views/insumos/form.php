@@ -55,6 +55,12 @@ $unidades  = ['g','kg','mg','ml','l','un','pct','cx'];
                 <?php endif; ?>
                 <button type="submit" class="adm-btn adm-btn-primary">💾 Salvar</button>
             </form>
+            <?php if ($insumo): ?>
+            <form method="POST" action="/admin/insumos/<?= $insumo['id'] ?>/excluir" style="margin-top:1rem"
+                  onsubmit="return confirm('Excluir permanentemente o insumo &quot;<?= htmlspecialchars($insumo['nome'], ENT_QUOTES, 'UTF-8') ?>&quot;? Esta ação é irreversível.')">
+                <button type="submit" class="adm-btn adm-btn-danger adm-btn-sm">Excluir insumo</button>
+            </form>
+            <?php endif; ?>
         </div>
     </div>
 

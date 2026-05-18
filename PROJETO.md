@@ -1,7 +1,7 @@
 # Iraná Natural — Documentação Técnica do Projeto
 
-> **Última atualização:** 2026-05-11
-> **Versão do sistema:** 6.6
+> **Última atualização:** 2026-05-15
+> **Versão do sistema:** 6.8
 > **Status:** Desenvolvimento ativo — pré-deploy de produção
 
 ---
@@ -225,6 +225,78 @@ GET/POST /minha-conta/alterar-senha (requer login)
 → password_hash(novaSenha, BCRYPT) + registro de senha_alterada_em
 → session_regenerate_id() + redirect /minha-conta
 ```
+
+### 6.8 Exclusão de Insumos com Validação de Vínculos (Admin)
+
+Funcionalidade de exclusão física de insumos no painel administrativo com proteção de integridade referencial.
+
+**Regras de negócio:**
+- Insumo **sem vínculos** em nenhuma tabela dependente → exclusão física (hard delete) permitida.
+- Insumo **com vínculos** em `compras_insumos`, `fichas_tecnicas` ou `mov_insumos` → exclusão bloqueada. Mensagem amigável informa exatamente quantos registros vinculados existem em cada tabela. O admin é orientado a usar o toggle "Insumo ativo" (soft delete) para ocultá-lo.
+
+**Fluxo do botão "Excluir" (listagem e formulário):**
+1. Admin clica em "Excluir" → `confirm()` do navegador pede confirmação com nome do insumo.
+2. POST para `/admin/insumos/{id}/excluir` (método POST obrigatório, GET redireciona).
+3. `InsumosController::excluir()` verifica existência; redireciona se não encontrado.
+4. `Insumo::contarVinculos()` executa 3 queries COUNT otimizadas (uma por tabela dependente).
+5. Se `total > 0`: flash de erro detalhado → redirect sem alterar dados.
+6. Se `total = 0`: `Model::delete()` (hard delete) → flash de sucesso com nome do insumo → redirect.
+
+**Tabelas verificadas antes da exclusão:**
+
+| Tabela | Campo FK | O que representa |
+|---|---|---|
+| `compras_insumos` | `insumo_id` | Histórico de compras registradas |
+| `fichas_tecnicas` | `insumo_id` | Receituário de produtos que usam este insumo |
+| `mov_insumos` | `insumo_id` | Histórico de movimentações de estoque |
+
+**Exemplo de mensagem de bloqueio:**
+> "Não é possível excluir: o insumo possui registros vinculados (3 compra(s), 1 ficha(s) técnica(s), 12 movimentação(ões) de estoque). Para ocultá-lo, desmarque "Insumo ativo" na edição."
+
+**Arquivos alterados:**
+- `app/Models/Insumo.php` — novo método `contarVinculos(int $id): array`; retorna `['compras' => n, 'fichas' => n, 'movs' => n]`
+- `admin/Controllers/InsumosController.php` — método `excluir()` reescrito com verificação de vínculos, hard delete condicional e mensagens contextualizadas
+- `admin/Views/insumos/index.php` — botão "Excluir" adicionado na coluna Ações (form POST + `confirm()` com nome do insumo)
+- `admin/Views/insumos/form.php` — botão "Excluir insumo" adicionado abaixo do form de edição (apenas quando editando)
+
+**Componentes reutilizados:**
+- `Model::delete(int $id)` — método base herdado, sem código duplicado
+- `Model::findById(int $id)` — guard de existência já padrão no projeto
+- `Model::query()` — usado nas 3 queries de contagem
+- `AdminController::flash()` / `redirect()` — padrão de mensagens flash e redirect
+- Classes CSS: `adm-btn adm-btn-danger adm-btn-sm`, `adm-alert adm-alert-error/success` — sem CSS novo
+- Padrão `<form method="POST" ... onsubmit="return confirm(...)">` — idêntico ao de categorias/banners/depoimentos
+
+**Decisão técnica:** O método antigo `excluir()` fazia apenas soft delete (`ativo = 0`). Isso duplicava o mecanismo do checkbox "Insumo ativo" já existente no formulário de edição. A nova implementação separa as responsabilidades: o checkbox gerencia ativação/desativação, e o botão "Excluir" realiza remoção física com proteção referencial.
+
+---
+
+### 6.7 Consulta Manual de Pagamento InfinitePay (Admin)
+
+Para cenários em que o webhook falhou ou foi atrasado, o admin pode acionar manualmente uma consulta de status à InfinitePay diretamente da tela do pedido.
+
+**Endpoint InfinitePay:** `POST https://api.checkout.infinitepay.io/payment_check`
+**Body:** `{ handle, order_nsu, transaction_nsu, slug }`
+
+**Fluxo do botão "Consultar status na InfinitePay" (admin):**
+1. CSRF verificado; apenas admin autenticado
+2. `InfinitePayProvider::consultarStatus()` chama a API com dados do registro `pagamentos`
+3. `handle` vem de `pagamentos.handle` (novo campo); fallback para `INFINITEPAY_HANDLE` para registros legados
+4. Resposta mapeada identicamente ao webhook: `approved → pago`, `canceled/refunded → cancelado`, etc.
+5. Idempotência dupla: `Pagamento::isDuplicate(transaction_nsu)` + verificação de status terminal do pedido
+6. Se aprovado: transação atômica idêntica ao webhook — `atualizarStatus(pago)` + `Venda::registrar()` + `atualizarStatus(separando)`
+7. E-mails pós-commit enviados com as mesmas flags de idempotência (`email_pago_enviado`, `email_separando_enviado`)
+8. Auditoria: entrada registrada em `webhook_logs` com `source = 'admin_manual_check'` + log em `error_log`
+9. UI: botão com loading spinner; resultado inline; recarga automática da página em caso de sucesso
+
+**Arquivos alterados:**
+- `sql/migration_v6_7_handle_pagamento.sql` — `ALTER TABLE pagamentos ADD COLUMN handle VARCHAR(100) NULL AFTER order_nsu`
+- `app/Models/Pagamento.php` — `criar()` aceita e persiste `handle`
+- `app/Controllers/CheckoutController.php` — passa `handle = $ipResponse['_request_payload']['handle']` ao `Pagamento::criar()`
+- `app/Core/InfinitePayProvider.php` — novo método `consultarStatus(handle, orderNsu, transactionNsu, slug): array`
+- `admin/Controllers/PedidosAdminController.php` — novo action `consultarPagamento(int $id): void`
+- `admin/index.php` — nova rota `POST /admin/pedidos/{id}/consultar-pagamento`
+- `admin/Views/pedidos/ver.php` — botão "Consultar status na InfinitePay" no card de pagamento
 
 ### 6.6 Persistência e Merge do Carrinho
 
@@ -459,7 +531,7 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 
 ## 14. Status Atual do Desenvolvimento
 
-**Versão:** 6.6 — Gerenciamento seguro de sessão com expiração automática por inatividade e tempo absoluto
+**Versão:** 6.8 — Exclusão de insumos com validação de vínculos e proteção de integridade referencial
 
 ### Funcionalidades implementadas e operacionais
 - [x] Catálogo de produtos com categorias e galeria de imagens
@@ -469,6 +541,8 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 - [x] Checkout completo (endereço, frete, pagamento)
 - [x] Integração InfinitePay Checkout (link de pagamento)
 - [x] Webhook InfinitePay com idempotência e transação atômica
+- [x] Consulta manual de pagamento InfinitePay no admin (fallback quando webhook falha) (v6.7)
+- [x] Exclusão de insumos com validação de vínculos e proteção de integridade referencial (v6.8)
 - [x] Desconto PIX 5% por unidade (aplicado no item, não no subtotal)
 - [x] Cálculo de frete via Melhor Envio + opções locais
 - [x] E-mails automáticos (pedido criado, pagamento confirmado, status atualizado)
@@ -581,7 +655,7 @@ GET      /admin/importacao        Importação de insumos CSV/XLSX
 ## 20. Checklist Pré-Deploy (Produção)
 
 - [ ] Criar `.env` no servidor com credenciais de produção (HostGator)
-- [ ] Rodar migrations pendentes em ordem: `migration_v6_1_email.sql`, `v6_2_historico.sql`, `v6_3_separando.sql`, `v6_4_senha_cliente.sql`
+- [ ] Rodar migrations pendentes em ordem: `migration_v6_1_email.sql`, `v6_2_historico.sql`, `v6_3_separando.sql`, `v6_4_senha_cliente.sql`, `v6_7_handle_pagamento.sql`
 - [ ] Cadastrar tokens Melhor Envio de produção em `/admin/configuracoes`
 - [ ] Gerar novo webhook secret: `php tools/gerar-webhook-secret.php`
 - [ ] Registrar URL do webhook no dashboard InfinitePay: `https://irananatural.com.br/webhook/infinitepay/{secret}`
@@ -647,5 +721,5 @@ git push origin --force --all
 
 ---
 
-*Documento atualizado em 2026-05-11 — reflete versão 6.6 (expiração automática de sessão).*
+*Documento atualizado em 2026-05-11 — reflete versão 6.7 (consulta manual de pagamento InfinitePay no admin).*
 *Próxima revisão recomendada: antes de cada deploy em produção.*

@@ -19,8 +19,8 @@ RewriteBase /
 
 # Force HTTPS — ATIVAR EM PRODUÇÃO (comentado para não quebrar dev local)
 # Descomentar as 2 linhas abaixo antes de fazer deploy no HostGator:
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Allow real files and dirs
 RewriteCond %{REQUEST_FILENAME} !-f

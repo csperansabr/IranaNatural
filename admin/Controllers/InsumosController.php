@@ -73,8 +73,24 @@ class InsumosController extends AdminController
 
     public function excluir(int $id): void
     {
-        $this->model->update($id, ['ativo' => 0]);
-        $this->flash('success', 'Insumo desativado.');
+        $insumo = $this->model->findById($id);
+        if (!$insumo) { $this->redirect('/admin/insumos'); return; }
+
+        $v = $this->model->contarVinculos($id);
+        $total = $v['compras'] + $v['fichas'] + $v['movs'];
+
+        if ($total > 0) {
+            $partes = [];
+            if ($v['compras'] > 0) $partes[] = "{$v['compras']} compra(s)";
+            if ($v['fichas']  > 0) $partes[] = "{$v['fichas']} ficha(s) técnica(s)";
+            if ($v['movs']    > 0) $partes[] = "{$v['movs']} movimentação(ões) de estoque";
+            $this->flash('error', 'Não é possível excluir: o insumo possui registros vinculados (' . implode(', ', $partes) . '). Para ocultá-lo, desmarque "Insumo ativo" na edição.');
+            $this->redirect('/admin/insumos');
+            return;
+        }
+
+        $this->model->delete($id);
+        $this->flash('success', 'Insumo "' . $insumo['nome'] . '" excluído com sucesso.');
         $this->redirect('/admin/insumos');
     }
 }
